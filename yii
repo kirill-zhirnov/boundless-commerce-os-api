@@ -1,0 +1,11 @@
+#!/usr/bin/env php
+<?php
+
+const PATH_ROOT = __DIR__;
+
+$configFile = 'console.php';
+$config = require_once PATH_ROOT . '/app/inc/bootstrap.php';
+
+$application = new yii\console\Application($config);
+$exitCode = $application->run();
+exit($exitCode);

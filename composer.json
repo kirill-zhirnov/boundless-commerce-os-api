@@ -1,0 +1,47 @@
+{
+    "name": "boundless-engine/api",
+    "type": "project",
+    "require": {
+        "php": ">=8.0.0",
+        "npm-asset/jquery": "^3.6",
+        "yiisoft/yii2": "2.0.49.1",
+        "yiisoft/yii2-gii": "^2.2",
+        "yiisoft/yii2-debug": "^2.1",
+        "vlucas/phpdotenv": "^5.5",
+        "lcobucci/jwt": "4.1.5",
+        "php-amqplib/php-amqplib": "^3.1",
+        "paypal/paypal-checkout-sdk": "^1.0",
+        "mustache/mustache": "^2.14",
+        "ext-bcmath": "*",
+        "ramsey/uuid": "^4.7",
+        "cocur/slugify": "^4.5",
+        "aws/aws-sdk-php": "^3.283",
+        "yiisoft/yii2-imagine": "^2.3"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "3.*",
+        "codeception/codeception": "^5.0",
+        "codeception/specify": "^2.0",
+        "codeception/verify": "^3.0",
+        "codeception/module-phpbrowser": "*",
+        "codeception/module-asserts": "*",
+        "codeception/module-yii2": "^1.1"
+    },
+    "authors": [
+        {
+            "name": "Kirill Zhirnov",
+            "email": "ekvixgroup@gmail.com"
+        }
+    ],
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://asset-packagist.org"
+        }
+    ],
+    "config": {
+        "allow-plugins": {
+            "yiisoft/yii2-composer": true
+        }
+    }
+}

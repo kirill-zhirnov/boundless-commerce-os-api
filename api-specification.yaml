@@ -1,0 +1,2284 @@
+openapi: 3.1.0
+info:
+  title: Boundless-commerce API
+  version: 1.1.26
+  contact:
+    name: Support team
+    email: info@boundless-commerce.com
+  description: >
+    # API client
+
+    The most simple way to start using the API is by using our [API client (JS)](https://github.com/kirill-zhirnov/boundless-api-client).
+
+    # Authentication
+
+    ## Token types
+
+    There are 2 types of access tokens: permanent tokens and generated ones. The generated ones is a more secure way.
+
+    ### Using permanent token:
+
+    Generate a permanent token in your control panel and pass it with each request as Authorization header:
+
+
+    ```
+    Authorization: Bearer <YOUR TOKEN>
+    ```
+
+    ### How to generate token?
+
+    A token is a JWT token with payload keys:
+
+    - `iId` - your instance ID (copy from token-generation dialog)
+
+    - `cId` - your client ID (copy from token-generation dialog)
+
+
+    Algorithm: `HS512`
+
+
+    Generated token must have `exp` key (expires in) - any date in the future.
+
+
+    Please read more about JWT tokens: [jwt.io](https://jwt.io).
+    There are plenty of ready-to-use libraries for most the languages: [jwt.io/libraries](https://jwt.io/libraries).
+
+  x-logo:
+    url: '/logo.svg'
+    altText: 'Boundless-commerce API'
+
+x-tagGroups:
+  - name: Catalog
+    tags:
+      - Products
+      - Categories
+      - Manufacturers
+      - Product types
+      - Attributes
+      - Filters
+
+  - name: Files
+    tags:
+      - Images
+
+  - name: Orders
+    tags:
+      - Cart
+      - Checkout
+      - Orders
+      - Manage Orders
+      - Order Statuses
+
+  - name: Users
+    tags:
+      - Customers
+
+  - name: System
+    tags:
+      - System
+
+tags:
+  - name: Products
+  - name: Categories
+  - name: Manufacturers
+  - name: Product types
+  - name: Attributes
+  - name: Filters
+  - name: Cart
+    description: >
+      ## How to work with the Cart?
+
+      1. Create a cart and save `cart_id` somewhere: `/orders/cart/retrieve`
+
+      2. Add items to the cart.
+
+      Use `/orders/cart/add` method. You need to submit `cart_id` and `item_id`. The `item_id` is an ID of an item.
+      Item is a product or a variant (option).
+
+      3. Modify the Cart if necessary: Change quantity, remove items, etc: `/orders/cart/{cart_id}/qty`, `/orders/cart/rm-items`.
+
+      4. Before moving to checkout you might need to validate items in the cart - if they are in stock and fit the Minimal order amount.
+      Use `/orders/cart/{cart_id}/validate` method.
+
+      5. To start order creation - init the checkout: `/orders/checkout/init` and save `order_id` somewhere. Method creates a draft order.
+      See Checkout instructions about how to populate order fields.
+
+      6. When you are ready to place an order: `/orders/checkout/{order_id}/place`.
+
+
+      **Where I can find item_id ?**
+
+
+      Product's and Variant's responses have an `item_id` field, e.g. `/catalog/products`.
+
+      It is important to understand, that if a product has variants - you need to specify variant's `item_id`
+      (please see explanation for the `/orders/cart/add` method).
+
+
+      **Arbitrary items**
+
+
+      It is possible to add an item which isn't in catalog - an arbitrary item: `/orders/cart/add-custom-item`
+
+  - name: Checkout
+    description: >
+      ## How to work with the Checkout?
+
+      1. To init the Checkout process you need an active `cart_id`. Please read [How to work with the Cart first.](#tag/Cart/How-to-work-with-the-Cart)
+
+      2. Init the Checkout: `/orders/checkout/init` and save `order.id` somewhere. Method creates a Draft order.
+
+      3. Populate Order's fields with `PATCH /orders/checkout/{order_id}/order` method.
+
+      4. An alternate way to save contact's information is using `/orders/checkout/{order_id}/contact` method. With this method
+      customer might be registered as a registered customer.
+
+      5. Place an order. There are 2 ways to achieve that: `PATCH /orders/checkout/{order_id}/order` with `place_the_order: true` or
+      call specific method `POST /orders/checkout/{order_id}/place`
+
+
+      Order will be created and notifications (if set) will be sent.
+
+  - name: Orders
+  - name: Manage Orders
+    description: >
+      ## Methods for managing orders
+
+      **Methods are allowed only for tokens with management rights.**
+
+
+  - name: Order Statuses
+  - name: Customers
+  - name: System
+  - name: Images
+
+servers:
+  - url: 'https://v1.api.boundless-commerce.com'
+paths:
+  /catalog/products:
+    get:
+      tags:
+        - Products
+      summary: Get products
+      parameters:
+        - name: product
+          in: query
+          style: form
+          explode: true
+          description: >
+            Products IDs.
+
+
+            Example: `?product[]=1&product[]=2`
+
+          schema:
+            type: array
+            items:
+              type: integer
+
+        - name: category
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: integer
+
+          description: >
+            Categories IDs.
+
+
+            Example: `?category[]=1&category[]=2`
+
+        - name: collection
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+          description: >
+            Collections IDs.
+
+
+            Example: `?collection[]=1&collection[]=2`
+
+        - name: attrs
+          in: query
+          explode: true
+          description: >
+            Filter by Attributes. Use an Attribute Alias as a key. If an Attribute is a multi-value
+            (checkbox, select, radio) - the value should be specified as an array.
+
+
+            For multi-value attributes a case ID should be used, e.g.: `?attrs[color][]=622&attrs[color][]=623` - where
+            `622` and `623` are IDs of cases. To get possible case's values use URL: `/catalog/attributes`
+
+
+            Another way to fetch cases - use filters: `/catalog/filters`. Filters are set of predefined attributes available
+            for search across catalog.
+
+
+            Example: `?attrs[color][]=622&attrs[color][]=623&props[info]=test`
+
+
+        - name: in_stock
+          in: query
+          description: >
+            Filter by in stock.
+          schema:
+            type: string
+            enum:
+              - 0
+              - 1
+
+        - name: price_min
+          in: query
+          example: 0.01
+          schema:
+            type: number
+
+        - name: price_max
+          in: query
+          example: 5.05
+          schema:
+            type: number
+
+        - name: brand
+          in: query
+          style: form
+          explode: true
+          example: brand[]=1&brand[]=2
+          description: >
+            Filter by manufacturer(s).
+          schema:
+            type: array
+            items:
+              type: integer
+
+        - name: text_search
+          in: query
+          style: form
+          description: >
+            Text search in the product title, SKU, and description. Treat it like a "like" search in the database.
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 20
+
+        - name: cross_sell_category
+          in: query
+          description: Selecting cross-sell products. "cross_sell_category" and "cross_sell_product" must be specified.
+          schema:
+            type: string
+            enum:
+              - related
+              - similar
+
+        - name: cross_sell_product
+          in: query
+          description: Selecting cross-sell products.
+          schema:
+            type: integer
+
+        - name: removed
+          in: query
+          description: >
+            Filter by removed products. By default only active (not removed) products are returned.
+
+
+            - `all` - returns all products (active and removed).
+
+            - `removed` - returns only removed products.
+
+
+            Whether product was removed or not determined by `deleted_at` field. If a product is removed - `deleted_at` is not null.
+          schema:
+            type: string
+            enum:
+              - all
+              - removed
+
+        - name: published_status
+          in: query
+          description: >
+            Filter by the Publication status. By default only published products are returned.
+
+
+            - `all` - returns all products (published and hidden).
+
+            - `hidden` - returns only hidden products.
+
+
+            Publication status is shown in the `status` field.
+
+        - name: sort
+          in: query
+          explode: true
+          description: >
+            List of sort rules (comma separated).
+
+
+            The direction by default is the `ASC`, for the `DESC` prepare name with a dash "-".
+
+
+            The `in_category` option - sorts products by user's order (user can sort products manually on the admin page).
+
+
+            Examples:
+
+
+            - `?sort=price` - sort by price
+
+            - `?sort=-price,name` - sort by price - DESC, name - ASC.`
+
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - price
+                - title
+                - in_category
+                - in_stock
+                - in_collection
+                - cross_sell
+
+        - name: page
+          in: query
+          description: Page number for the pagination.
+          schema:
+            type: integer
+
+        - name: per-page
+          in: query
+          description: Amounts of products per page. The minimal value is 1, the maximum is 100.
+          schema:
+            type: integer
+
+    head:
+      tags:
+        - Products
+      summary: Calculate products
+      description: >
+        The query parameters is the same as for the `/catalog/products`.
+
+        Get pagination headers without actually fetching products. This methods is faster than the `GET`.
+
+
+        **Returns headers:**
+
+        - `X-Pagination-Total-Count` - total products
+
+        - `X-Pagination-Page-Count` - total pages
+
+        - `X-Pagination-Current-Page` - current page
+
+        - `X-Pagination-Per-Page` - per page.
+
+        Parameters are the same as the GET request.
+
+
+    post:
+      tags:
+        - Products
+      summary: Create a product
+      description: >
+        Action allowed only for tokens with management rights.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostProductModel'
+              required:
+                - title
+
+  /catalog/products/{productId}:
+    patch:
+      tags:
+        - Products
+      summary: Update a product
+      description: >
+        Action allowed only for tokens with management rights.
+        The method acts like update (not replace) - pass fields which need to be updated.
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostProductModel'
+
+  /catalog/products/item/{product}:
+    get:
+      tags:
+        - Products
+      summary: Get detail product
+      description: >
+        Fetches a product by ID or slug.
+      parameters:
+        - name: product
+          in: path
+          required: true
+          description: >
+            `product_id` or `slug`.
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+
+        - name: removed
+          in: query
+          description: >
+            Filter by removed products. By default only active (not removed) products are returned.
+
+
+            - `all` - returns all products (active and removed).
+
+            - `removed` - returns only removed products.
+
+
+            Whether product was removed or not determined by `deleted_at` field. If a product is removed - `deleted_at` is not null.
+          schema:
+            type: string
+            enum:
+              - all
+              - removed
+
+        - name: published_status
+          in: query
+          description: >
+            Filter by the Publication status. By default only published products are returned.
+
+
+            - `all` - returns all products (published and hidden).
+
+            - `hidden` - returns only hidden products.
+
+
+            Publication status is shown in the `status` field.
+
+  /catalog/products/variants:
+    get:
+      tags:
+        - Products
+      summary: Get variants
+      description: Fetches variants by product's ID list.
+      parameters:
+        - name: product
+          in: query
+          required: true
+          style: form
+          explode: true
+          description: >
+            Example: `?product[]=1&product[]=2`
+          schema:
+            type: array
+            items:
+              type: integer
+
+  /catalog/products/filter-fields-ranges:
+    post:
+      tags:
+        - Filters
+      summary: Calculate filters summary
+      description: >
+        Returns filter's fields with amounts of products per an Attribute Case, Price range, and available manufacturers
+        (also with amounts of products per manufacturer). Methods also returns detailed information required for building a filter form.
+        The method is useful to build dynamic catalog filters.
+        It also takes in account catalog filters and returns the actual product amount per Attribute or Brand.
+
+        In the filters `type` = `characteristic` means Attributes. Attributes are former Characteristics.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - filter_fields
+              properties:
+                filter_fields:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - type
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - characteristic
+                          - price
+                          - brand
+                          - availability
+                      characteristic_id:
+                        type: integer
+                        description: Attribute ID
+                values:
+                  type: object
+                  description: >
+                    Object with filters values. Filters are the same as for the `GET /catalog/products` route.
+
+
+
+  /catalog/categories/tree:
+    get:
+      tags:
+        - Categories
+      summary: Get categories as a tree
+      parameters:
+        - name: menu
+          in: query
+          description: >
+            Fetches categories are displayed in a menu.
+          schema:
+            type: string
+            enum:
+              - category
+        - name: calc_products
+          in: query
+          description: >
+            Shows additional key "products_qty" with amounts of products related to a category.
+          schema:
+            type: string
+            enum:
+              - 1
+
+  /catalog/categories/flat:
+    get:
+      tags:
+        - Categories
+      summary: Get categories as a flat list
+      parameters:
+        - name: menu
+          in: query
+          description: >
+            Fetches categories are displayed in a menu.
+          schema:
+            type: string
+            enum:
+              - category
+        - name: calc_products
+          in: query
+          description: >
+            Shows additional key "products_qty" with amounts of products related to a category.
+          schema:
+            type: string
+            enum:
+              - 1
+        - name: calc_children
+          in: query
+          description: >
+            Shows additional key "children_qty" with amounts of children related to a category.
+          schema:
+            type: string
+            enum:
+              - 1
+        - name: parent
+          in: query
+          description: >
+            Filter list by parent category id. Pass "0" to select root categories.
+          schema:
+            type: integer
+        - name: brand
+          in: query
+          description: >
+            Filter categories that have products related to specific brands.
+          style: form
+          explode: true
+          example: brand[]=1&brand[]=2
+          schema:
+            type: array
+            items:
+              type: integer
+        - name: sort
+          in: query
+          description: >
+            Sort categories by a field. The direction by default is the ASC, for the DESC prepare name with a dash "-".
+          schema:
+            type: string
+            enum:
+              - tree_sort
+              - title
+
+  /catalog/categories/parents:
+    get:
+      tags:
+        - Categories
+      summary: Get parents as a flat list
+      parameters:
+        - name: category
+          in: query
+          required: true
+          schema:
+            type: integer
+
+  /catalog/categories/item/{category}:
+    get:
+      tags:
+        - Categories
+      summary: Get detail category
+      parameters:
+        - name: category
+          in: path
+          required: true
+          description: >
+            `category_id` or `slug`.
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+
+        - name: with_children
+          in: query
+          description: >
+            Adds key with children.
+          schema:
+            type: string
+            enum:
+              - 1
+        - name: with_siblings
+          in: query
+          description: >
+            Adds key with siblings.
+          schema:
+            type: string
+            enum:
+              - 1
+        - name: with_parents
+          in: query
+          description: >
+            Adds key with parents.
+          schema:
+            type: string
+            enum:
+              - 1
+        - name: with_filter
+          in: query
+          description: >
+            Adds key with filter.
+          schema:
+            type: string
+            enum:
+              - 1
+
+  /catalog/categories:
+    post:
+      tags:
+        - Categories
+      summary: Create a category
+      description: Action allowed only for tokens with management rights.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCategoryModel'
+              required:
+                - title
+
+  /catalog/categories/{categoryId}:
+    patch:
+      tags:
+        - Categories
+      summary: Update a category
+      description: >
+        Action allowed only for tokens with management rights.
+        The method acts like update (not replace) - pass fields which need to be updated.
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCategoryModel'
+
+  /catalog/manufacturers:
+    get:
+      tags:
+        - Manufacturers
+      summary: Get manufacturers
+      parameters:
+        - name: calc_products
+          in: query
+          description: >
+            Shows additional key "products_qty" with amounts of products related to a manufacturer.
+          schema:
+            type: string
+            enum:
+              - 1
+        - name: title
+          in: query
+          description: >
+            Filter manufacturers by title.
+          schema:
+            type: string
+        - name: category
+          in: query
+          description: >
+            Filter manufacturers that have products related to specific categories.
+          style: form
+          explode: true
+          example: category[]=1&category[]=2
+          schema:
+            type: array
+            items:
+              type: integer
+
+  /catalog/manufacturers/{manufacturer}:
+    get:
+      tags:
+        - Manufacturers
+      summary: Get detail manufacturer
+      parameters:
+        - name: manufacturer
+          in: path
+          required: true
+          description: >
+            `manufacturer_id` or `slug`.
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+
+  /catalog/product-types:
+    get:
+      tags:
+        - Product types
+      summary: Get Product types
+      description: >
+        Product types are former Commodity Groups. So the ID of a Product type is field `group_id`.
+
+  /catalog/product-types/{id}:
+    get:
+      tags:
+        - Product types
+      summary: Get Product type by ID
+      description: >
+        Product types are former Commodity Groups. So the ID of a Product type is field `group_id`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+
+  /catalog/attributes:
+    get:
+      tags:
+        - Attributes
+      summary: Get Attributes list
+      description: >
+        Get a list of all attributes available in the system. Each attribute is related to a Product type
+        (Product types are former Commodity groups) by field `group_id`. You can filter the result by
+        passing `group_id=<id>` to select attributes related to particular product type.
+      parameters:
+        - name: group_id
+          in: query
+          example: 10
+          schema:
+            type: integer
+        - name: id
+          in: query
+          style: form
+          explode: true
+          example: id[]=1&id[]=2
+          description: ID(s) of attribute.
+          schema:
+            type: array
+            items:
+              type: integer
+        - name: alias
+          in: query
+          style: form
+          explode: true
+          example: alias[]=color&alias[]=size
+          schema:
+            type: array
+            items:
+              type: string
+
+    post:
+      tags:
+        - Attributes
+      summary: Create an Attribute
+      description: >
+        Action allowed only for tokens with management rights.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCharacteristicModel'
+              required:
+                - title
+                - alias
+                - group_id
+                - type
+
+  /catalog/attributes/{id}:
+    get:
+      tags:
+        - Attributes
+      summary: Get an Attribute by ID or Alias
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: >
+            `id` or `alias`.
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+    patch:
+      tags:
+        - Attributes
+      summary: Update an Attribute
+      description: >
+        Action allowed only for tokens with management rights.
+        The method acts like an update (not replace) - pass fields which needs to be updated.
+        Fields `group_id` and `type` cannot be updated.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCharacteristicModel'
+
+  /catalog/filters:
+    get:
+      tags:
+        - Filters
+      summary: Get filters
+      parameters:
+        - name: is_default
+          in: query
+          description: >
+            Filter by the default field.
+          schema:
+            type: string
+            enum:
+              - 1
+
+  /catalog/filters/{filter_id}:
+    get:
+      tags:
+        - Filters
+      summary: Get detail filter
+      parameters:
+        - name: filter_id
+          in: path
+          required: true
+          schema:
+            type: integer
+
+  /catalog/filters/by-category/{category_id}:
+    get:
+      tags:
+        - Filters
+      summary: Get filter by category ID
+      parameters:
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: integer
+
+  /files/images/upload:
+    post:
+      tags:
+        - Images
+      summary: Upload an image.
+      description: >
+        **Action allowed only for tokens with management rights.**
+
+
+        Upload an image for an essence: `product`, `category`, `manufacturer`.
+
+
+        If an image is less than 5mb - you can skip `upload_session_id`, `chunks_number` and `chunk_position`. If an image is
+        bigger than 5mb - you need to split image by 5mb chunks and pass `upload_session_id`, `chunks_number` and `chunk_position`.
+        The final file will be concatenated on the final chunk uploads.
+
+
+        **Please take a look at the upload examples**
+
+        - [Gist: Simple Upload (no chunks)](https://gist.github.com/kirill-zhirnov/f29e29f7f6bb4dc621dcee3de5138dca)
+
+        - [Gist: Upload  by chunks](https://gist.github.com/kirill-zhirnov/8778ed3dcb418a1d6818c8a3ea3cbb57)
+
+
+        It is required to pass any of an essence ID: `for_product_id`, `for_category_id` or `for_manufacturer_id`.
+
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - file_name
+              properties:
+                file:
+                  type: string
+                  format: binary
+                file_name:
+                  type: string
+                upload_session_id:
+                  type: string
+                  format: uuid
+                  description: If a file is being uploaded by chunk - pass `upload_session_id` - the file is concatenating by this ID.
+                chunks_number:
+                  type: integer
+                  description: If a file is being uploaded by chunk - pass `chunks_number` - the total amount of chunks.
+                chunk_position:
+                  type: integer
+                  description: If a file is being uploaded by chunk - pass `chunk_position` - the current chunk (starts from 0).
+                for_product_id:
+                  type: integer
+                  description: ID of a product
+                for_category_id:
+                  type: integer
+                  description: ID of a category
+                for_manufacturer_id:
+                  type: integer
+                  description: ID of a manufacturer
+
+  /files/images/{image_id}/original-url:
+    get:
+      tags:
+        - Images
+      summary: Get original image download Url.
+      description: >
+        **Action allowed only for tokens with management rights.**
+
+
+        Method is useful if you want to download an original image from our storages.
+
+
+        If you want to use image on a website - please use media server: `media.boundless-commerce.com/thumb/i{instanceId}/{path}?mode=scale&max-size=100`.
+        We recommend to use API-client for the [Thumbnail generation](https://www.npmjs.com/package/boundless-api-client#thumbnail-generation)
+
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: integer
+
+  /orders/cart/retrieve:
+    post:
+      tags:
+        - Cart
+      summary: Creates a new cart
+      description: >
+        Please see section [How to work with the Cart?](/#tag/Cart)
+
+  /orders/cart/add:
+    post:
+      tags:
+        - Cart
+      summary: Add an item to Cart
+      description: >
+        Adds an item to the cart.
+
+        If an item is a product with variants, the method returns
+        `{"actionRequired": "chooseVariant"}`.
+
+        If item is successfully added - returns `{"result": true}`.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cart_id
+                - item_id
+                - qty
+              properties:
+                cart_id:
+                  type: string
+                  format: uuid
+                item_id:
+                  type: integer
+                  description: >
+                    The item_id is an ID of an item. Item is a product or a variant (option).
+
+                    Where I can find `item_id` ?
+
+                    Product's and Variant's responses have an item_id field, e.g. `/catalog/products`.
+
+                qty:
+                  type: integer
+
+                validate_stock:
+                  type: boolean
+                  description: If true - the quantity of the adding item will be validated for being in stock.
+
+  /orders/cart/{cart_id}/total:
+    get:
+      tags:
+        - Cart
+      summary: Get cart total
+      parameters:
+        - name: cart_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+  /orders/cart/{cart_id}/items:
+    get:
+      tags:
+        - Cart
+      summary: Get cart items
+      parameters:
+        - name: cart_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+  /orders/cart/{cart_id}/qty:
+    patch:
+      tags:
+        - Cart
+      summary: Set quantity of items
+      parameters:
+        - name: cart_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      description: >
+        Updates quantity of items in the cart. If the qty parameter is 0 - in the item will be removed from the cart.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - item_id
+                      - qty
+                    properties:
+                      item_id:
+                        type: integer
+                      qty:
+                        type: integer
+                validate_stock:
+                  type: boolean
+                  description: If true - the quantity of items will be validated for being in stock.
+
+  /orders/cart/{cart_id}/validate:
+    post:
+      tags:
+        - Cart
+      summary: Validates cart
+      parameters:
+        - name: cart_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      description: >
+        Validates the quantity of items in the cart for being in stock and the Minimal order amount.
+
+  /orders/cart/rm-items:
+    post:
+      tags:
+        - Cart
+      summary: Remove items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cart_id
+                - items
+              properties:
+                cart_id:
+                  type: string
+                  format: uuid
+                items:
+                  type: array
+                  items:
+                    type: integer
+                  description: List of item_id
+                  example: [312, 2124]
+
+  /orders/cart/add-custom-item:
+    post:
+      tags:
+        - Cart
+      summary: Add an Arbitrary item
+      description: >
+        Adds an arbitrary item to the cart.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cart_id
+                - title
+                - price
+                - qty
+              properties:
+                cart_id:
+                  type: string
+                  format: uuid
+                title:
+                  type: string
+                price:
+                  type: number
+                qty:
+                  type: integer
+
+  /orders/checkout/init:
+    post:
+      tags:
+        - Checkout
+      summary: Init checkout
+      description: >
+        Initialize checkout and fetches basic information for the checkout process.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cart_id
+              properties:
+                cart_id:
+                  type: string
+                  format: uuid
+
+  /orders/checkout/{order_id}/contact:
+    post:
+      tags:
+        - Checkout
+      summary: Save contact information
+      description: >
+        Saves contact information for an order. Required fields depend on the settings
+        (email or phone might be marked as required in the Control Panel). If a field is marked as hidden - it will be ignored.
+
+
+        A customer might be registered - pass `register_me=true` - in this scenario the Email will be validated on
+        uniqueness and if successful - welcome email is sent.
+
+
+        If a customer is already authorized - pass `X-Customer` header. In this case - the email field is ignored.
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Customer
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                  description: >
+                    Whether or not the field required is determined in Checkout Settings:
+                    Admin Side -> Settings -> Checkout settings.
+
+                    If the field is hidden - it will be ignored.
+                email:
+                  type: string
+                  format: email
+                  description: >
+                    If a customer is authorized (header `X-Customer` is passed) - the email field is ignored.
+                    Whether or not the field required is determined in Checkout Settings:
+                    Admin Side -> Settings -> Checkout settings.
+
+                    If the field is hidden - it will be ignored.
+                receive_marketing_info:
+                  type: boolean
+                register_me:
+                  type: boolean
+                  description: >
+                    If user isn't authorized and `register_me=true` - the email field is required. If success - Welcome
+                    email with password will be sent.
+
+                    If user is registered `authToken` will be in the response.
+
+
+  /orders/checkout/{order_id}/order:
+    patch:
+      tags:
+        - Checkout
+      summary: Save Order details
+      description: >
+        Method allows to save almost all the details about the order.
+
+
+        None of the fields are required.
+        Required fields can be specified in `required_fields` field.
+
+
+        If a customer is already authorized - pass `X-Customer` header.
+
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Customer
+          schema:
+            type: string
+            format: uuid
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customer_id:
+                  type: string
+                  enum:
+                    - me
+                  example: me
+                  description: >
+                    If you want to specify Authorized customer for the order - pass `customer_id=me`.
+                    Header `X-Customer` must be specified. (Customer should be authorized).
+
+                contact:
+                  type: object
+                  description: >
+                    Required fields of the Contact object are specified in the Checkout settings (Admin side).
+                  properties:
+                    email:
+                      type: string
+                      format: email
+                      description: Customer's email address
+                    phone:
+                      type: string
+                      description: >
+                        Customer's phone number. The phone will be validated by Locale settings.
+                    first_name:
+                      type: string
+                      description: First name
+                    last_name:
+                      type: string
+                      description: Last name
+
+                customer_custom_attrs:
+                  type: object
+                  description: Arbitrary data related to the Customer. Should be an object.
+
+                client_comment:
+                  type: string
+                  description: Comments from the client
+                  maxLength: 1000
+
+                shipping_address:
+                  type: object
+                  $ref: '#/components/schemas/AddressModel'
+
+                billing_address:
+                  type: object
+                  $ref: '#/components/schemas/AddressModel'
+
+                billing_address_the_same:
+                  type: boolean
+
+                payment_method_id:
+                  type: integer
+
+                delivery_id:
+                  type: integer
+
+                custom_attrs:
+                  type: object
+                  description: Arbitrary data related to the Order. Should be an object.
+
+                required_fields:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - contact
+                      - client_comment
+                      - shipping_address
+                      - billing_address
+                      - payment_method_id
+                      - delivery_id
+                  description: Specify which fields should be required.
+
+                place_the_order:
+                  type: boolean
+                  description: Set to `true` to place the order
+
+
+  /orders/checkout/discount-code:
+    post:
+      tags:
+        - Checkout
+      summary: Add a Coupon (discount code)
+      description: >
+        Adds discount code to the order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order_id
+                - code
+              properties:
+                order_id:
+                  type: string
+                  format: uuid
+                code:
+                  type: string
+
+  /orders/checkout/{order_id}/discounts:
+    delete:
+      tags:
+        - Checkout
+      summary: Clear coupons (discount codes)
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+  /orders/checkout/{order_id}/shipping-step:
+    get:
+      tags:
+        - Checkout
+      summary: Get shipping step
+      description: >
+        Fetches information for the shipping step.
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+  /orders/checkout/{order_id}/payment-step:
+    get:
+      tags:
+        - Checkout
+      summary: Get payment step
+      description: >
+        Fetches information for the payment step.
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+  /orders/checkout/{order_id}/place:
+    post:
+      tags:
+        - Checkout
+      summary: Place an Order
+      description: >
+        Method creates an Order - changes status from "draft" to "published" and process all triggers
+        (webhooks, notifications, etc.).
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+  /orders/checkout/payment/paypal-capture:
+    post:
+      tags:
+        - Checkout
+      summary: Capture PayPal payment by ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+
+  /orders/customer/order/get/{order_id}:
+    get:
+      tags:
+        - Orders
+      summary: Get detail order
+      description: Fetches information about the order.
+      parameters:
+        - name: order_id
+          in: path
+          required: true.
+          schema:
+            type: string
+            format: uuid
+
+  /orders/customer/order/set-custom-attrs:
+    post:
+      tags:
+        - Orders
+      summary: Set custom attributes
+      description: Set custom attributes for the order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order_id
+                - attrs
+              properties:
+                order_id:
+                  type: string
+                  format: uuid
+                attrs:
+                  type: object
+
+  /orders/customer/order/set-addresses:
+    post:
+      tags:
+        - Orders
+      summary: Set order addresses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order_id
+              properties:
+                order_id:
+                  type: string
+                  format: uuid
+                billing_address_the_same:
+                  type: boolean
+                  description: >
+                    If `true` - billing address will be the same as shipping address.
+                required_addresses:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - shipping
+                      - billing
+                  description: >
+                    If `billing` is present - `billing_address` will be required.
+                    If `shipping` is present - `shipping_address` will be required.
+                shipping_address:
+                  type: object
+                  properties:
+                    first_name:
+                      type: string
+                    last_name:
+                      type: string
+                    company:
+                      type: string
+                    address_line_1:
+                      type: string
+                    address_line_2:
+                      type: string
+                    city:
+                      type: string
+                    state:
+                      type: string
+                    country_id:
+                      type: integer
+                    zip:
+                      type: string
+                    phone:
+                      type: string
+                    comment:
+                      type: string
+                billing_address:
+                  type: object
+                  properties:
+                    first_name:
+                      type: string
+                    last_name:
+                      type: string
+                    company:
+                      type: string
+                    address_line_1:
+                      type: string
+                    address_line_2:
+                      type: string
+                    city:
+                      type: string
+                    state:
+                      type: string
+                    country_id:
+                      type: integer
+                    zip:
+                      type: string
+                    phone:
+                      type: string
+                    comment:
+                      type: string
+
+  /orders/customer/order/make-payment-link:
+    post:
+      tags:
+        - Orders
+      summary: Generate payment link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order_id
+              properties:
+                order_id:
+                  type: string
+                  format: uuid
+
+  /orders/customer/my-orders:
+    get:
+      tags:
+        - Orders
+      summary: Fetches Customer's orders.
+      description: >
+        The header key `X-Customer` must be provided.
+      parameters:
+        - name: created_at
+          in: query
+          description: >
+            Filter by date creation. Required format `Y-m-d`.
+
+            You can use modifiers `>` or `<`.
+            E.g.: `created_at=<2020-01-01` - to find orders before the `2020-01-01`
+
+        - name: total_price
+          in: query
+          description: >
+            Filter orders by total price. Number - use dot as a decimal separator.
+
+            You can use modifiers `>` or `<`.
+            E.g.: `total_price=>100` to find orders greater than `100`.
+
+        - name: status_id
+          in: query
+          schema:
+            type: integer
+          description: Filter orders by status ID.
+
+  /orders/admin/orders:
+    get:
+      tags:
+        - Manage Orders
+      summary: Fetches orders list
+      parameters:
+        - name: created_at
+          in: query
+          description: >
+            Filter by date creation. Required format `Y-m-d`.
+
+            You can use modifiers `>` or `<`.
+            E.g.: `created_at=<2020-01-01` - to find orders before the `2020-01-01`
+
+        - name: total_price
+          in: query
+          description: >
+            Filter orders by total price. Number - use dot as a decimal separator.
+
+            You can use modifiers `>` or `<`.
+            E.g.: `total_price=>100` to find orders greater than `100`.
+
+        - name: status_id
+          in: query
+          schema:
+            type: integer
+          description: Filter orders by status ID.
+
+        - name: customer_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+
+    head:
+      tags:
+        - Manage Orders
+      summary: Calculate orders
+      description: >
+        The query parameters is the same as for the `/orders/admin/orders`.
+
+
+        Get pagination headers without actually fetching orders. This methods is faster than the `GET`.
+
+
+        **Returns headers:**
+
+        - `X-Pagination-Total-Count` - total orders
+
+        - `X-Pagination-Page-Count` - total pages
+
+        - `X-Pagination-Current-Page` - current page
+
+        - `X-Pagination-Per-Page` - per page.
+
+
+  /orders/admin/order/{order_id}:
+    patch:
+      tags:
+        - Manage Orders
+      summary: Update Order details
+      description: >
+        The method acts like update (not replace) - pass fields which need to be updated.
+
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          description: >
+            `order_id` can be a UUID or Int. UUID is a public ID, at the Admin you can see INT.
+          schema:
+            oneOf:
+              - type: string
+              - type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status_id:
+                  type: integer
+                  description: List of statuses can be found `GET /orders/statuses`
+                customer_id:
+                  type: string
+                  format: uuid
+                is_paid:
+                  type: boolean
+                payment_method_id:
+                  type: integer
+                internal_comment:
+                  type: string
+                  maxLength: 1000
+                shipping_address:
+                  type: object
+                  $ref: '#/components/schemas/AddressModel'
+                billing_address:
+                  type: object
+                  $ref: '#/components/schemas/AddressModel'
+                billing_address_the_same:
+                  type: boolean
+                delivery_id:
+                  type: integer
+                custom_attrs:
+                  type: object
+                  description: Arbitrary data related to the Order. Should be an object.
+
+  /orders/statuses:
+    get:
+      tags:
+        - Order Statuses
+      summary: Fetches Order Statuses
+
+  /user/customer/register:
+    post:
+      tags:
+        - Customers
+      summary: Register customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - re_password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                re_password:
+                  type: string
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                private_comment:
+                  type: string
+                receive_marketing_info:
+                  type: boolean
+                send_welcome_email:
+                  type: boolean
+                  default: false
+                login_url:
+                  type: string
+                  description: >
+                      If `send_welcome_email=true` - you can pass `login_url`, otherwise - the login url from the settings will be taken.
+
+                custom_attrs:
+                  type: object
+                  description: Arbitrary data related to the Customer. Should be an object.
+
+  /user/customer/login:
+    post:
+      tags:
+        - Customers
+      summary: Login customer
+      description: >
+        Authorize customer.
+
+
+        After authorization add `X-Customer: <customer-token>` header to the next requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+
+  /user/auth/validate-magick-link:
+    post:
+      tags:
+        - Customers
+      summary: Validate Magick Link.
+      description: >
+        Validates magick link - pass a query string, e.g. `?id=X&token1=Y&token2=Z&sign=sign`.
+        See `/user/admin/auth/make-magick-link` for a link generation. Method return token for authorization.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query_string
+              properties:
+                query_string:
+                  type: string
+
+  /user/auth/mail-restore-link:
+    post:
+      tags:
+        - Customers
+      summary: Sends instructions for password restoration.
+      description: >
+        You need to specify a url_prefix - it should be with `http(s):// + host + path`.
+        We will add a magick link params and send an email with `url_prefix` + magick link params. When a user clicks
+        on a link and goes to your website you need to validate magick link params
+        by calling `/user/auth/validate-magick-link` and authorize a user if necessary.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - url_prefix
+              properties:
+                email:
+                  type: string
+                  format: email
+                url_prefix:
+                  type: string
+                  example: 'https://your-domain.com/restore-pass'
+                extra_params:
+                  type: object
+                  description: >
+                    Add arbitrary params which will be added to magick-link params. For more information please see
+                    `/user/admin/auth/make-magick-link`.
+
+  /user/customer/private/who-am-i:
+    get:
+      tags:
+        - Customers
+      summary: Get authorized customer
+      description: >
+        Returns customer info.
+      parameters:
+        - in: header
+          name: X-Customer
+          required: true
+          schema:
+            type: string
+
+  /user/customer/auth/update-pass:
+    post:
+      tags:
+        - Customers
+      description: >
+        Update customer's password
+      parameters:
+        - in: header
+          name: X-Customer
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+                - password_repeat
+              properties:
+                password:
+                  type: string
+                password_repeat:
+                  type: string
+
+  /user/admin/customers/index:
+    get:
+      tags:
+        - Customers
+      summary: Fetches customers list.
+      description: >
+        **Action allowed only for tokens with management rights.** Fetches customers list.
+      parameters:
+        - name: name
+          in: query
+          description: >
+            Filter by Customer's name.
+        - name: email
+          in: query
+          description: >
+            Filter by Customer's email.
+
+  /user/admin/auth/make-magick-link:
+    post:
+      tags:
+        - Customers
+      summary: Creates magick link (for auth).
+      description: >
+        **Action allowed only for tokens with management rights.** Creates magick link.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+                - expire_in
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                expire_in:
+                  type: string
+                  enum:
+                    - 1day
+                    - 1week
+                    - 1month
+                url_prefix:
+                  type: string
+                extra_params:
+                  type: object
+                  description: Add arbitrary params in query string.
+
+
+  /system/settings:
+    get:
+      tags:
+        - System
+      summary: Fetches settings
+      parameters:
+        - name: keys
+          in: query
+          style: form
+          explode: true
+          example: keys[]=orders.checkoutPage&keys[]=system.locale
+          schema:
+            type: array
+            items:
+              type: string
+
+  /system/countries:
+    get:
+      tags:
+        - System
+      summary: List of Countries
+
+components:
+  schemas:
+    PostPriceModel:
+      type: object
+      description: >
+        An object with prices. The key - is a price alias.  There are 2 predefined price-types
+        in the system: "selling_price" and "purchase_price". Another price-types might be create (e.g. prices for VIP clients: "vip_prices").
+      example: {"selling_price": {"price": 100.05,"compareAtPrice": 210.59}, "my_custom_price": {"price": 50}}
+      properties:
+        selling_price:
+          type: object
+          required:
+            - price
+          properties:
+            price:
+              type: number
+            compareAtPrice:
+              type: number
+          nullable: true
+        purchase_price:
+          type: object
+          required:
+            - price
+          properties:
+            price:
+              type: number
+            compareAtPrice:
+              type: number
+          nullable: true
+      additionalProperties:
+        type: object
+        required:
+          - price
+        properties:
+          price:
+            type: number
+          compareAtPrice:
+            type: number
+
+    PostProductModel:
+      type: object
+      properties:
+        title:
+          type: string
+          example: 'iPhone XR, 16GB'
+        url_key:
+          type: string
+          pattern: '^[a-z0-9\-_]+$'
+          example: 'iphone-xr-16gb'
+          description: >
+            A slug in the url. If it is not provided - the slug will be generated based on title.
+            Url should contain at least one alphabetic symbol, may contain numeric symbols and "_" or "-".
+          nullable: true
+        description:
+          type: string
+          nullable: true
+          description: Product description
+        sku:
+          type: string
+          maxLength: 1000
+          description: SKU, should be unique across the catalog.
+          nullable: true
+        manufacturer_id:
+          type: integer
+          description: ID of a manufacturer
+          nullable: true
+        group_id:
+          type: integer
+          description: >
+            ID of a Product type (Product types are Former Commodity Groups). You can fetch list of all available
+            Product types: `GET /catalog/product-types`
+          nullable: true
+        external_id:
+          type: string
+          maxLength: 1000
+          description: An unique ID in the external database. Could be used for mapping across multiple sources.
+          nullable: true
+        publishing_status:
+          type: string
+          enum:
+            - published
+            - hidden
+          default: published
+          description: Hidden products are not visible on the Frontend.
+          nullable: true
+        prices:
+          $ref: '#/components/schemas/PostPriceModel'
+          nullable: true
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              category_id:
+                type: integer
+              is_default:
+                type: boolean
+                nullable: true
+          description: Categories that should be assigned to the product.
+          nullable: true
+          example: [ { "category_id": 1 }, { "category_id": 2, "is_default": true } ]
+        labels:
+          type: array
+          items:
+            type: object
+            properties:
+              label_id:
+                type: integer
+          description: Labels that should be assigned to the product.
+          example: [ { "label_id": 1 }, { "label_id": 2 } ]
+          nullable: true
+        collections:
+          type: array
+          items:
+            type: object
+            properties:
+              collection_id:
+                type: integer
+          description: Collections that should be assigned to the product.
+          example: [ { "collection_id": 1 }, { "collection_id": 2 } ]
+          nullable: true
+        dimensions:
+          type: object
+          properties:
+            width:
+              type: number
+            height:
+              type: number
+            length:
+              type: number
+            weight:
+              type: number
+          nullable: true
+        is_in_stock:
+          type: boolean
+          description: If inventory tracking is disabled - set if product in stock or not.
+          nullable: true
+        stock_per_warehouse:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Specific key - if set `total` - then the stock is assigned to the first warehouse.
+              nullable: true
+            additionalProperties:
+              type: integer
+          description: Object with keys as a `warehouse_id`. If you don't want specify a warehouse, pass `total` as a  single key.
+          nullable: true
+        tax_status:
+          type: string
+          enum:
+            - none
+            - taxable
+          default: taxable
+        tax_class_id:
+          type: integer
+          description: The ID of a tax-class.
+        arbitrary_data:
+          type: object
+          nullable: true
+          description: Arbitrary data related to the product. Should be an object.
+
+    PostCategoryModel:
+      type: object
+      properties:
+        title:
+          type: string
+          example: 'Mobile phones'
+        url_key:
+          type: string
+          pattern: '^[a-z0-9\-_]+$'
+          example: 'mobile-phones'
+          description: >
+            A slug in the url. If it is not provided - the slug will be generated based on title.
+            Url should contain at least one alphabetic symbol, may contain numeric symbols and "_" or "-".
+          nullable: true
+        parent_id:
+          type: integer
+          nullable: true
+          description: An ID of the parent category or `null`.
+        publishing_status:
+          type: string
+          enum:
+            - published
+            - hidden
+          default: published
+          description: Hidden categories are not visible on the Frontend.
+          nullable: true
+        description_top:
+          type: string
+          nullable: true
+          description: Description (top).
+        description_bottom:
+          type: string
+          nullable: true
+          description: Description (bottom).
+        external_id:
+          type: string
+          nullable: true
+          description: An unique ID in the external database. Could be used for mapping across multiple sources.
+        custom_link:
+          type: string
+          nullable: true
+          description: A link from the category in menu.
+        show_in_category_menu:
+          type: boolean
+          nullable: true
+          description: Whether or not the category should be displayed in the categories menu.
+        use_filter:
+          type: boolean
+          nullable: true
+          description: Whether or not a filter on the category page should be displayed.
+        sort:
+          type: integer
+          nullable: true
+          description: If not specified - the last value in parent category is set (the category becomes last).
+        arbitrary_data:
+          type: object
+          nullable: true
+          description: Arbitrary data related to the category. Should be an object.
+
+    PostCharacteristicModel:
+      type: object
+      properties:
+        title:
+          type: string
+          example: 'My Attribute title'
+        group_id:
+          type: integer
+          example: 1
+          description: >
+            ID of a Product Type (former Commodity groups). You can see available Product types by URL: `GET /catalog/product-types`
+        alias:
+          type: string
+          pattern: '^[a-z0-9\-_]+$'
+          example: 'my-attribute-title'
+          description: JSON key.
+        type:
+          type: string
+          enum:
+            - checkbox
+            - radio
+            - select
+            - text
+            - textarea
+            - wysiwyg
+        cases:
+          type: array
+          items:
+            type: object
+            required:
+              - title
+            properties:
+              title:
+                type: string
+              id:
+                type: integer
+                description: If you want to update existing case - pass `id`.
+          description:  >
+            Attributes with type `checkbox`, `radio`, `select` should have Cases (Options) - list of
+            cases.
+          example: [{"title":"Red"},{"title":"Green"},{"title":"Yellow","id":1}]
+        help:
+          type: string
+          description: Hint in the UI.
+        sort:
+          type: integer
+          description: Attributes are ordered by sort.
+
+    AddressModel:
+      type: object
+      description: >
+        Required fields depends on Settings.
+
+
+        Please check settings on the Backend: Admin -> Settings -> Checkout
+
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        company:
+          type: string
+        address_line_1:
+          type: string
+          required: true
+        address_line_2:
+          type: string
+        city:
+          type: string
+          required: true
+        state:
+          type: string
+        country_id:
+          type: integer
+          required: true
+        zip:
+          type: string
+          required: true
+        phone:
+          type: string
+        comment:
+          type: string
