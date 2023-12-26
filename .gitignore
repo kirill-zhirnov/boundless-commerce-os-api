@@ -1,0 +1,9 @@
+/composer.phar
+/.env
+/vendor
+/.idea
+/node_modules
+/web/tmp.php
+.DS_Store
+/.vscode
+/gen
