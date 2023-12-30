@@ -107,12 +107,13 @@ class Item2CartForm extends Model
 		$product = Product::find()
 			->addSelect('product.*')
 			->addInventoryItemSelect()
-			->addProductPriceSelect()
+//			->addProductPriceSelect()
 			->addProductImagesSelect()
 			->with(['productTexts' => function (ActiveQuery $query) {
 				$query->where(['product_text.lang_id' => Lang::DEFAULT_LANG]);
 			}])
 			->with(['productProp'])
+			->with(['inventoryItem.finalPrices.currency', 'inventoryItem.finalPrices.price'])
 			->andWhere(['product.product_id' => $this->inventoryItem->product_id])
 			->one()
 		;

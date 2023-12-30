@@ -147,11 +147,7 @@ class VwInventoryItem extends \yii\db\ActiveRecord
 			return true;
 		}
 
-		if ($this->track_inventory) {
-			return $this->available_qty > 0;
-		} else {
-			return true;
-		}
+		return $this->available_qty > 0;
 	}
 
 	public function shallTrackInventory(): bool

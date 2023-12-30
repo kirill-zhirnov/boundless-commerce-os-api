@@ -21,29 +21,29 @@ class ProductQuery extends ActiveQuery
 		return $this;
 	}
 
-	public function addProductPriceSelect(): self
-	{
-		$this
-			->addSelect(new Expression("
-				json_build_object(
-					'value', final_price.value,
-					'min', final_price.min,
-					'max', final_price.max,
-					'old', final_price.old,
-					'old_min', final_price.old_min,
-					'old_max', final_price.old_max,
-					'currency_alias', currency.alias
-				) AS __product_price"))
-			->leftJoin('final_price', 'final_price.item_id = inventory_item.item_id and final_price.point_id = :pointId', [
-				'pointId' => PointSale::DEFAULT_POINT
-			])
-			->leftJoin('price', 'final_price.price_id = price.price_id')
-			->leftJoin('currency', 'currency.currency_id = final_price.currency_id')
-			->andWhere('price.alias = :priceAlias or final_price.point_id is null', [':priceAlias' => Price::ALIAS_SELLING_PRICE])
-		;
-
-		return $this;
-	}
+//	public function addProductPriceSelect(): self
+//	{
+//		$this
+//			->addSelect(new Expression("
+//				json_build_object(
+//					'value', final_price.value,
+//					'min', final_price.min,
+//					'max', final_price.max,
+//					'old', final_price.old,
+//					'old_min', final_price.old_min,
+//					'old_max', final_price.old_max,
+//					'currency_alias', currency.alias
+//				) AS __product_price"))
+//			->leftJoin('final_price', 'final_price.item_id = inventory_item.item_id and final_price.point_id = :pointId', [
+//				'pointId' => PointSale::DEFAULT_POINT
+//			])
+//			->leftJoin('price', 'final_price.price_id = price.price_id')
+//			->leftJoin('currency', 'currency.currency_id = final_price.currency_id')
+//			->andWhere('price.alias = :priceAlias or final_price.point_id is null', [':priceAlias' => Price::ALIAS_SELLING_PRICE])
+//		;
+//
+//		return $this;
+//	}
 
 	public function addProductImagesSelect($withTags = true): self
 	{

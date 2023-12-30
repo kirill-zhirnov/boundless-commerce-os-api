@@ -5,6 +5,7 @@ namespace app\modules\catalog\components;
 use app\modules\catalog\activeQueries\ProductQuery;
 use app\modules\catalog\models\Category;
 use app\modules\catalog\models\Characteristic;
+use app\modules\catalog\models\FinalPrice;
 use app\modules\catalog\models\Label;
 use app\modules\catalog\models\PointSale;
 use app\modules\catalog\models\Price;
@@ -15,6 +16,7 @@ use app\modules\system\models\Lang;
 use app\modules\system\models\Setting;
 use yii\db\ActiveQuery;
 use yii\db\Expression;
+use yii\helpers\ArrayHelper;
 use yii\web\HttpException;
 use Yii;
 use yii\web\NotFoundHttpException;
@@ -69,9 +71,10 @@ class ProductLoader
 				$query->where(['product_text.lang_id' => Lang::DEFAULT_LANG]);
 			}])
 			->addInventoryItemSelect()
-			->addProductPriceSelect()
+//			->addProductPriceSelect()
 			->addProductImagesSelect()
 			->with(['productProp'])
+			->with(['inventoryItem.finalPrices.currency', 'inventoryItem.finalPrices.price'])
 			->with(['manufacturer' => function (ActiveQuery $query) {
 				$query->where(['manufacturer.deleted_at' => null]);
 			}])
@@ -106,17 +109,17 @@ class ProductLoader
 			}])
 		;
 
-        if (empty($this->removed)) {
-            $query->andWhere('product.deleted_at is null');
-        } else if ($this->removed === 'removed') {
-            $query->andWhere('product.deleted_at is not null');
-        }
+		if (empty($this->removed)) {
+			$query->andWhere('product.deleted_at is null');
+		} else if ($this->removed === 'removed') {
+			$query->andWhere('product.deleted_at is not null');
+		}
 
-        if (empty($this->published_status)) {
-            $query->andWhere('product.status = :status', ['status' => Product::STATUS_PUBLISHED]);
-        } else if ($this->published_status === 'hidden') {
-            $query->andWhere('product.status = :status', ['status' => Product::STATUS_HIDDEN]);
-        }
+		if (empty($this->published_status)) {
+			$query->andWhere('product.status = :status', ['status' => Product::STATUS_PUBLISHED]);
+		} else if ($this->published_status === 'hidden') {
+			$query->andWhere('product.status = :status', ['status' => Product::STATUS_HIDDEN]);
+		}
 
 		return $query;
 	}
@@ -153,19 +156,25 @@ class ProductLoader
 		/** @var \yii\i18n\Formatter $formatter */
 		$formatter = Yii::$app->formatter;
 
-		if (isset($this->product->__product_price)) {
-			if (isset($this->product->__product_price['min'])) {
-				$price = $this->product->__product_price['min'];
-			}
-			if (isset($this->product->__product_price['value'])) {
-				$price = $this->product->__product_price['value'];
-			}
+		if ($this->product->inventoryItem?->finalPrices) {
+			$sellingPrices = array_values(
+				array_filter($this->product->inventoryItem?->finalPrices, fn (FinalPrice $finalPrice) => $finalPrice->price?->isSellingPrice())
+			);
 
-			if (isset($this->product->__product_price['old_min'])) {
-				$priceOld = $this->product->__product_price['old_min'];
-			}
-			if (isset($this->product->__product_price['old'])) {
-				$priceOld = $this->product->__product_price['old'];
+			if ($sellingPrices) {
+				$sellingPrice = $sellingPrices[0];
+
+				if ($sellingPrice->min) {
+					$price = $sellingPrice->min;
+				} else if ($sellingPrice->value) {
+					$price = $sellingPrice->value;
+				}
+
+				if ($sellingPrice->old_min) {
+					$priceOld = $sellingPrice->old_min;
+				} else if ($sellingPrice->old) {
+					$priceOld = $sellingPrice->old;
+				}
 			}
 		}
 
@@ -198,13 +207,16 @@ class ProductLoader
 		];
 
 		if (isset($this->extendedVariants, $this->extendedVariants['list'])) {
+			/** @var Variant $row */
 			foreach ($this->extendedVariants['list'] as $row) {
+				$variantPrices = $row->extractSellingPrice();
+
 				$out['variants'][] = [
-					'title' => $row['title'],
-					'sku' => $row['sku'],
-					'price' => $row['price'] ? $formatter->asCurrency($row['price'], $currency) : '',
-					'priceOld' => $row['price_old'] ? $formatter->asCurrency($row['price_old'], $currency) : '',
-					'inStock' => $row['in_stock']
+					'title' => $row->variantTextDefault->title,
+					'sku' => $row->sku,
+					'price' => $variantPrices['price'] ? $formatter->asCurrency($variantPrices['price'], $currency) : '',
+					'priceOld' => $variantPrices['priceOld'] ? $formatter->asCurrency($variantPrices['priceOld'], $currency) : '',
+					'inStock' => $row->isInStock()
 				];
 			}
 		}

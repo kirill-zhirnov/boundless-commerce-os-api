@@ -16,8 +16,6 @@ use Yii;
  * @property bool|null $has_variants
  * @property array| $product_type
  * @property string|null $manufacturer
- * @property string|null $price_alias
- * @property string|null $price
  * @property array|null $props
  * @property array $default_category
  * @property string|null $images
@@ -27,6 +25,8 @@ use Yii;
  * @property int|null $sort_in_stock
  * @property string|null $status
  * @property string|null $deleted_at
+ *
+ * @property FinalPrice[] $finalPrices
  */
 class VwProductList extends \yii\db\ActiveRecord
 {
@@ -54,66 +54,9 @@ class VwProductList extends \yii\db\ActiveRecord
 		return Yii::$app->get('instanceDb');
 	}
 
-	/**
-	 * @inheritdoc
-	 *
-	 * @return array
-	 */
-	public function fields(): array
+	public function getFinalPrices()
 	{
-		$basic = parent::fields();
-		unset($basic['manufacturer_id'], $basic['point_id']);
-
-		$fields = [];
-		foreach ($basic as $key => $value) {
-			$fields[$key] = $value;
-
-			if ($key === 'item_id') {
-				$fields['in_stock'] = fn () => $this->isInStock();
-			}
-		}
-
-		$fields['manufacturer'] = function (self $model) {
-			if (is_null($model->manufacturer['manufacturer_id'])) {
-				return null;
-			} else {
-				return $model->manufacturer;
-			}
-		};
-
-		$fields['price'] = function (self $model) {
-			if (is_null($model->price_alias)) {
-				return null;
-			} else {
-				return $this->price;
-			}
-		};
-
-		$fields['default_category'] = function (self $model) {
-			if (is_null($model->default_category['category_id'])) {
-				return null;
-			} else {
-				return $model->default_category;
-			}
-		};
-
-		$fields['product_type'] = function (self $model) {
-			if (is_null($model->product_type['group_id'])) {
-				return null;
-			} else {
-				return $model->product_type;
-			}
-		};
-
-		$fields['images'] = function (self $model) {
-			return Util::sqlAggArr2Objects($model->images);
-		};
-
-		$fields['labels'] = function (self $model) {
-			return Util::sqlAggArr2Objects($model->labels);
-		};
-
-		return $fields;
+		return $this->hasMany(FinalPrice::class, ['item_id' => 'item_id']);
 	}
 
 	public function isInStock(): bool|null
@@ -167,5 +110,60 @@ class VwProductList extends \yii\db\ActiveRecord
 			'status' => 'Status',
 			'deleted_at' => 'Deleted At',
 		];
+	}
+
+	/**
+	 * @inheritdoc
+	 *
+	 * @return array
+	 */
+	public function fields(): array
+	{
+		$basic = parent::fields();
+		unset($basic['manufacturer_id'], $basic['point_id']);
+
+		$fields = [];
+		foreach ($basic as $key => $value) {
+			$fields[$key] = $value;
+
+			if ($key === 'item_id') {
+				$fields['in_stock'] = fn () => $this->isInStock();
+				$fields['prices'] = fn () => $this->finalPrices;
+			}
+		}
+
+		$fields['manufacturer'] = function (self $model) {
+			if (is_null($model->manufacturer['manufacturer_id'])) {
+				return null;
+			} else {
+				return $model->manufacturer;
+			}
+		};
+
+		$fields['default_category'] = function (self $model) {
+			if (is_null($model->default_category['category_id'])) {
+				return null;
+			} else {
+				return $model->default_category;
+			}
+		};
+
+		$fields['product_type'] = function (self $model) {
+			if (is_null($model->product_type['group_id'])) {
+				return null;
+			} else {
+				return $model->product_type;
+			}
+		};
+
+		$fields['images'] = function (self $model) {
+			return Util::sqlAggArr2Objects($model->images);
+		};
+
+		$fields['labels'] = function (self $model) {
+			return Util::sqlAggArr2Objects($model->labels);
+		};
+
+		return $fields;
 	}
 }

@@ -123,4 +123,9 @@ class Price extends \yii\db\ActiveRecord
 	{
 		return $this->hasMany(InventoryItem::class, ['item_id' => 'item_id'])->viaTable('inventory_price', ['price_id' => 'price_id']);
 	}
+
+	public function isSellingPrice(): bool
+	{
+		return $this->alias === self::ALIAS_SELLING_PRICE;
+	}
 }

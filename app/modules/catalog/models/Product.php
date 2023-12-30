@@ -63,7 +63,7 @@ class Product extends \yii\db\ActiveRecord
 	const STATUS_PUBLISHED = 'published';
 	const STATUS_HIDDEN = 'hidden';
 
-	public string|array|null $__product_price;
+//	public string|array|null $__product_price;
 
 	public $nonVariantCharacteristics;
 
@@ -134,9 +134,9 @@ class Product extends \yii\db\ActiveRecord
 	{
 		parent::afterFind();
 
-		if (isset($this->__product_price)) {
-			$this->__product_price = json_decode($this->__product_price, true);
-		}
+//		if (isset($this->__product_price)) {
+//			$this->__product_price = json_decode($this->__product_price, true);
+//		}
 	}
 
 	/**
@@ -555,15 +555,17 @@ class Product extends \yii\db\ActiveRecord
 			return $this->productProp->available_qty > 0;
 		};
 
-		if (isset($this->__product_price)) {
-			$out['price'] = function () {
-				if (is_null($this->__product_price['currency_alias'])) {
-					return null;
-				} else {
-					return $this->__product_price;
-				}
-			};
-		}
+		$out['prices'] = fn () => $this->inventoryItem?->finalPrices;
+
+//		if (isset($this->__product_price)) {
+//			$out['price'] = function () {
+//				if (is_null($this->__product_price['currency_alias'])) {
+//					return null;
+//				} else {
+//					return $this->__product_price;
+//				}
+//			};
+//		}
 
 		$out['text'] = function () {
 			if ($this->productTexts) {

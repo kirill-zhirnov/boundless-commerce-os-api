@@ -4,6 +4,8 @@ namespace app\modules\catalog\searchModels;
 
 use app\modules\catalog\models\Characteristic;
 use app\modules\catalog\models\Manufacturer;
+use app\modules\catalog\models\PointSale;
+use app\modules\catalog\models\Price;
 use app\modules\system\models\Lang;
 use http\Exception\RuntimeException;
 use yii\base\Model;
@@ -317,8 +319,13 @@ class FilterFieldsSearch extends Model
 			->orderBy([])
 			->innerJoin(
 				'final_price',
-				'final_price.point_id = vw.point_id and final_price.item_id = vw.item_id and final_price.price_id = vw.price_id'
+				'final_price.point_id = :point and final_price.item_id = vw.item_id', [
+					'point' => PointSale::DEFAULT_POINT
+				]
 			)
+			->innerJoin('price', 'price.price_id = final_price.price_id and price.alias = :sellingPrice', [
+				'sellingPrice' => Price::ALIAS_SELLING_PRICE
+			])
 			->select(new Expression('least(min(final_price.value), min(final_price.min)) as "min", greatest(max(final_price.value), max(final_price.max)) as "max"'))
 			->asArray()
 			->one()

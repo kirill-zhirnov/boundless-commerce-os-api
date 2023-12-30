@@ -5,6 +5,7 @@ namespace app\modules\catalog\searchModels;
 use app\modules\catalog\models\Category;
 use app\modules\catalog\models\Characteristic;
 use app\modules\catalog\models\Collection;
+use app\modules\catalog\models\PointSale;
 use app\modules\catalog\models\Price;
 use app\modules\catalog\models\Product;
 use app\modules\catalog\models\VwProductList;
@@ -100,9 +101,7 @@ class ProductSearch extends Model
 		$this->query
 			->alias('vw')
 			->select(new Expression('distinct on ('.$this->getSqlDistinct().' ) vw.*'))
-			->where('(vw.price_alias = :vwPriceAlias or vw.price_alias is null)', [
-				'vwPriceAlias' => Price::ALIAS_SELLING_PRICE,
-			])
+			->with(['finalPrices.currency', 'finalPrices.price'])
 		;
 
 		$this->applyGeneralFilters();
@@ -338,27 +337,52 @@ class ProductSearch extends Model
 			}
 		}
 
-		if ($this->price_min || $this->price_max) {
-			$this->query->innerJoin(
-				'final_price',
-				'final_price.point_id = vw.point_id and final_price.item_id = vw.item_id and final_price.price_id = vw.price_id'
-			);
+		if ($this->price_min) {
+			$this->query->andWhere('
+				exists (
+					select
+						1
+					from
+						final_price
+						inner join price using(price_id)
+					where
+						final_price.point_id = :pointId
+						and price.alias = :sellingPrice
+						and final_price.item_id = vw.item_id
+						and (
+							final_price.value >= :minFinalPrice
+							or final_price.min >= :minFinalPrice
+							or final_price.max >= :minFinalPrice
+						)
+				)
+			', [
+				'pointId' => PointSale::DEFAULT_POINT,
+				'sellingPrice' => Price::ALIAS_SELLING_PRICE,
+				'minFinalPrice' => $this->price_min
+			]);
+		}
 
-			if ($this->price_min) {
-				$this->query
-					->andWhere('final_price.value >= :minFinalPrice or final_price.min >= :minFinalPrice or final_price.max >= :minFinalPrice', [
-						'minFinalPrice' => $this->price_min
-					])
-				;
-			}
-
-			if ($this->price_max) {
-				$this->query
-					->andWhere('final_price.value <= :maxFinalPrice or final_price.max <= :maxFinalPrice', [
-						'maxFinalPrice' => $this->price_max
-					])
-				;
-			}
+		if ($this->price_max) {
+			$this->query->andWhere('
+				exists (
+					select
+						1
+					from
+						final_price
+						inner join price using(price_id)
+					where
+						final_price.point_id = :pointId
+						and price.alias = :sellingPrice
+						and final_price.item_id = vw.item_id
+						and (
+							final_price.value <= :maxFinalPrice or final_price.max <= :maxFinalPrice
+						)
+				)
+			', [
+				'pointId' => PointSale::DEFAULT_POINT,
+				'sellingPrice' => Price::ALIAS_SELLING_PRICE,
+				'maxFinalPrice' => $this->price_max
+			]);
 		}
 
 		$this->query->andFilterWhere(['vw.manufacturer_id' => $this->brand]);

@@ -5,6 +5,7 @@ namespace app\modules\catalog\models;
 use Yii;
 use app\modules\system\models\Lang;
 use app\modules\inventory\models\InventoryItem;
+use app\modules\inventory\models\VwTrackInventory;
 
 /**
  * This is the model class for table "variant".
@@ -25,7 +26,9 @@ use app\modules\inventory\models\InventoryItem;
  * @property Product $product
  * @property ProductImportRel[] $productImportRels
  * @property VariantText[] $variantTexts
+ * @property VariantText $variantTextDefault
  * @property VariantImage[] $variantImages
+ * @property VwTrackInventory $vwTrackInventory
  */
 class Variant extends \yii\db\ActiveRecord
 {
@@ -155,6 +158,13 @@ class Variant extends \yii\db\ActiveRecord
 		return $this->hasMany(VariantText::class, ['variant_id' => 'variant_id']);
 	}
 
+	public function getVariantTextDefault()
+	{
+		return $this->hasOne(VariantText::class, ['variant_id' => 'variant_id'])
+			->andWhere(['variant_text.lang_id' => Lang::DEFAULT_LANG])
+		;
+	}
+
 	public function getVariantImages()
 	{
 		return $this->hasMany(VariantImage::class, ['variant_id' => 'variant_id']);
@@ -163,70 +173,81 @@ class Variant extends \yii\db\ActiveRecord
 	public static function loadVariantsForTpl($productId): array
 	{
 		$out = self::loadCharacteristics($productId);
-		$out['list'] = self::loadProductVariants($productId);
+//		$out['list'] = self::loadProductVariants($productId);
+		$out['list'] = Variant::find()
+			->with(['variantTextDefault'])
+			->with(['inventoryItem.finalPrices.currency', 'inventoryItem.finalPrices.price'])
+			->with(['inventoryItem.vwTrackInventory'])
+			->where([
+				'product_id' => $productId,
+				'deleted_at' => null
+			])
+			->orderBy(['variant_id' => SORT_ASC])
+			->all()
+		;
 
 		return $out;
 	}
 
-	public static function loadProductVariants($productId): array
-	{
-		$rows = self::getDb()->createCommand('
-			select
-				v.variant_id,
-				v.sku,
-				t.title,
-				p.value as price,
-				p.old as price_old,
-				i.item_id,
-				vw.track_inventory,
-				i.available_qty,
-				i.reserved_qty
-			from
-				variant v
-				inner join variant_text t on v.variant_id = t.variant_id and t.lang_id = :lang
-				inner join inventory_item i on i.variant_id = v.variant_id
-				inner join vw_track_inventory vw on vw.item_id = i.item_id
-				inner join product on product.product_id = v.product_id
-				left join (
-					select
-						f.item_id,
-						f.value,
-						f.old
-					from
-						final_price f
-						inner join price on price.price_id = f.price_id and price.alias = :price
-					where
-						f.point_id = :point
-				) p on p.item_id = i.item_id
-			where
-				v.product_id = :product
-				and v.deleted_at is null
-			order by
-				v.variant_id
-		')
-			->bindValues([
-				'lang' => Lang::DEFAULT_LANG,
-				'point' => PointSale::DEFAULT_POINT,
-				'product' => $productId,
-				'price' => Price::ALIAS_SELLING_PRICE
-			])
-			->queryAll()
-		;
-
-		foreach ($rows as &$row) {
-			$row['in_stock'] = $row['available_qty'] > 0;
-
-			if (!is_null($row['price'])) {
-				$row['price'] = floatval($row['price']);
-			}
-
-			if (!is_null($row['price_old'])) {
-				$row['price_old'] = floatval($row['price_old']);
-			}
-		}
-
-		return $rows;
-	}
+//	public static function loadProductVariants($productId): array
+//	{
+//		$rows = self::getDb()->createCommand('
+//			select
+//				v.variant_id,
+//				v.sku,
+//				t.title,
+//				p.value as price,
+//				p.old as price_old,
+//				i.item_id,
+//				vw.track_inventory,
+//				i.available_qty,
+//				i.reserved_qty
+//			from
+//				variant v
+//				inner join variant_text t on v.variant_id = t.variant_id and t.lang_id = :lang
+//				inner join inventory_item i on i.variant_id = v.variant_id
+//				inner join vw_track_inventory vw on vw.item_id = i.item_id
+//				inner join product on product.product_id = v.product_id
+//				left join (
+//					select
+//						f.item_id,
+//						f.value,
+//						f.old
+//					from
+//						final_price f
+//						inner join price on price.price_id = f.price_id and price.alias = :price
+//					where
+//						f.point_id = :point
+//				) p on p.item_id = i.item_id
+//			where
+//				v.product_id = :product
+//				and v.deleted_at is null
+//			order by
+//				v.variant_id
+//		')
+//			->bindValues([
+//				'lang' => Lang::DEFAULT_LANG,
+//				'point' => PointSale::DEFAULT_POINT,
+//				'product' => $productId,
+//				'price' => Price::ALIAS_SELLING_PRICE
+//			])
+//			->queryAll()
+//		;
+//
+//		foreach ($rows as &$row) {
+//			$row['in_stock'] = $row['available_qty'] > 0;
+//
+//			if (!is_null($row['price'])) {
+//				$row['price'] = floatval($row['price']);
+//			}
+//
+//			if (!is_null($row['price_old'])) {
+//				$row['price_old'] = floatval($row['price_old']);
+//			}
+//		}
+//
+//		return $rows;
+//	}
 
 	public static function loadCharacteristics($productId): array
 	{
@@ -318,28 +339,50 @@ class Variant extends \yii\db\ActiveRecord
 		];
 	}
 
+	public function isInStock(): bool
+	{
+		return $this->inventoryItem->available_qty > 0;
+	}
+
+	public function extractSellingPrice(): array
+	{
+		$price = null;
+		$priceOld = null;
+
+		$sellingPrices = array_values(
+			array_filter($this->inventoryItem?->finalPrices, fn (FinalPrice $finalPrice) => $finalPrice->price?->isSellingPrice())
+		);
+
+		if ($sellingPrices) {
+			$sellingPrice = $sellingPrices[0];
+
+			if ($sellingPrice->min) {
+				$price = $sellingPrice->min;
+			} else if ($sellingPrice->value) {
+				$price = $sellingPrice->value;
+			}
+
+			if ($sellingPrice->old_min) {
+				$priceOld = $sellingPrice->old_min;
+			} else if ($sellingPrice->old) {
+				$priceOld = $sellingPrice->old;
+			}
+		}
+
+		return ['price' => $price, 'priceOld' => $priceOld];
+	}
+
 	public function fields(): array
 	{
 		$out = parent::fields();
-		$out['title'] = function () {
-			if ($this->isRelationPopulated('variantTexts') && isset($this->variantTexts[0])) {
-				return $this->variantTexts[0]->title;
-			}
-		};
+
+		$out['title'] = fn () => $this->variantTextDefault?->title;
+		$out['prices'] = fn () => $this->inventoryItem?->finalPrices;
+		$out['in_stock'] = fn () => $this->isInStock();
+		$out['inventoryItem'] = fn () => $this->inventoryItem;
+		$out['images'] = fn () => $this->variantImages;
 
 		unset($out['deleted_at']);
-
-		if ($this->isRelationPopulated('inventoryItem') && $this->inventoryItem) {
-			$out['inventoryItem'] = function () {
-				return $this->inventoryItem;
-			};
-		}
-
-		if ($this->isRelationPopulated('variantImages')) {
-			$out['images'] = function () {
-				return $this->variantImages;
-			};
-		}
 
 		return $out;
 	}

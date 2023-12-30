@@ -118,4 +118,15 @@ class FinalPrice extends \yii\db\ActiveRecord
 	{
 		return $this->hasOne(Price::class, ['price_id' => 'price_id']);
 	}
+
+	public function fields(): array
+	{
+		$fields = parent::fields();
+		unset($fields['point_id'], $fields['item_id'], $fields['price_id'], $fields['currency_id'], $fields['is_auto_generated']);
+
+		$fields['price_alias'] = fn () => $this->price->alias;
+		$fields['currency_alias'] = fn () => $this->currency->alias;
+
+		return $fields;
+	}
 }
