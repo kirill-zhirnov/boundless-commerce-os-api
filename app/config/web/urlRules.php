@@ -177,22 +177,25 @@ return [
 			'POST update-pass' => 'update-pass',
 		]
 	],
-	[
-		'class' => 'yii\rest\UrlRule',
-		'controller' => 'user/admin/customer',
-		'pluralize' => true,
-		'patterns' => [
-			'GET index' => 'index',
-		]
-	],
-	[
-		'class' => 'yii\rest\UrlRule',
-		'controller' => 'user/admin/auth',
-		'pluralize' => false,
-		'patterns' => [
-			'POST make-magick-link' => 'make-magick-link',
-		]
-	],
+	'GET user/admin/customers' => 'user/admin/customer/index',
+//	[
+//		'class' => 'yii\rest\UrlRule',
+//		'controller' => 'user/admin/customer',
+//		'pluralize' => true,
+//		'patterns' => [
+//			'GET index' => 'index',
+//		]
+//	],
+	'POST user/admin/auth/make-magick-link' => 'user/admin/auth/make-magick-link',
+	'POST user/admin/auth/find-or-create' => 'user/admin/auth/find-or-create',
+//	[
+//		'class' => 'yii\rest\UrlRule',
+//		'controller' => 'user/admin/auth',
+//		'pluralize' => false,
+//		'patterns' => [
+//			'POST make-magick-link' => 'make-magick-link',
+//		]
+//	],
 	[
 		'class' => 'yii\rest\UrlRule',
 		'controller' => 'orders/admin/orders',

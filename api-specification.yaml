@@ -1781,7 +1781,7 @@ paths:
                 login_url:
                   type: string
                   description: >
-                      If `send_welcome_email=true` - you can pass `login_url`, otherwise - the login url from the settings will be taken.
+                    If `send_welcome_email=true` - you can pass `login_url`, otherwise - the login url from the settings will be taken.
 
                 custom_attrs:
                   type: object
@@ -1906,7 +1906,7 @@ paths:
                 password_repeat:
                   type: string
 
-  /user/admin/customers/index:
+  /user/admin/customers:
     get:
       tags:
         - Customers
@@ -1954,6 +1954,43 @@ paths:
                 extra_params:
                   type: object
                   description: Add arbitrary params in query string.
+
+  /user/admin/auth/find-or-create:
+    post:
+      tags:
+        - Customers
+      summary: Find or Create customer & Authorize.
+      description: >
+        **Action allowed only for tokens with management rights.**
+
+
+        Method is useful for integrating third-party auth: after user is authorized on a third-party service - call this method
+        to find or create a customer and authorize.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Either `id` or `email` should be specified.
+                email:
+                  type: string
+                  format: email
+                  description: Either `id` or `email` should be specified.
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                phone:
+                  type: string
+                custom_attrs:
+                  type: object
+                  description: Arbitrary data related to the Customer. Should be an object.
 
 
   /system/settings:

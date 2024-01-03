@@ -4,6 +4,7 @@ namespace app\modules\user\controllers\admin;
 
 use app\components\filters\StrongToken;
 use app\components\RestController;
+use app\modules\user\formModels\AuthOrCreateForm;
 use app\modules\user\formModels\MakeMagickLinkForm;
 use yii\helpers\ArrayHelper;
 use yii\web\ServerErrorHttpException;
@@ -38,5 +39,25 @@ class AuthController extends RestController
 		}
 
 		return $result;
+	}
+
+	public function actionFindOrCreate()
+	{
+		$model = new AuthOrCreateForm();
+		$model->load(Yii::$app->getRequest()->getBodyParams(), '');
+
+		if ($model->process() === false && !$model->hasErrors()) {
+			throw new ServerErrorHttpException('Failed to update the object for unknown reason.');
+		}
+
+		if ($model->hasErrors()) {
+			return $model;
+		}
+
+		$person = $model->getPerson();
+		return [
+			'person' => $person,
+			'authToken' => $person->createAuthToken()
+		];
 	}
 }

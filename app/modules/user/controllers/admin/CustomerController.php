@@ -4,12 +4,9 @@ namespace app\modules\user\controllers\admin;
 
 use app\components\filters\StrongToken;
 use app\components\RestController;
-use app\modules\orders\searchModels\OrdersSearch;
-use app\modules\user\formModels\MakeMagickLinkForm;
 use app\modules\user\searchModels\CustomerSearch;
 use yii\helpers\ArrayHelper;
 use Yii;
-use yii\web\ServerErrorHttpException;
 
 class CustomerController extends RestController
 {
