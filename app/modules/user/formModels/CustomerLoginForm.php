@@ -27,7 +27,7 @@ class CustomerLoginForm extends Model
 	{
 		$this->person = Person::find()
 			->innerJoinWith('personAuth')
-			->with(['personProfile', 'personAddresses'])
+			->publicPersonScope()
 			->where('
 				person.site_id = :site
 				and person.email = :email

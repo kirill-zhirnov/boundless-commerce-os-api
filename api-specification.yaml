@@ -179,6 +179,13 @@ paths:
         - Products
       summary: Get products
       parameters:
+        - in: header
+          name: X-Customer
+          schema:
+            type: string
+            format: uuid
+            description: >
+              Guest user can see only public prices. Logged in customer can see appropriate private prices.
         - name: product
           in: query
           style: form
@@ -450,6 +457,14 @@ paths:
             oneOf:
               - type: integer
               - type: string
+
+        - in: header
+          name: X-Customer
+          schema:
+            type: string
+            format: uuid
+            description: >
+              Guest user can see only public prices. Logged in customer can see appropriate private prices.
 
         - name: removed
           in: query
@@ -1033,6 +1048,15 @@ paths:
         `{"actionRequired": "chooseVariant"}`.
 
         If item is successfully added - returns `{"result": true}`.
+
+      parameters:
+        - in: header
+          name: X-Customer
+          schema:
+            type: string
+            format: uuid
+            description: >
+              If private price is specified - a customer must be authorized and assigned to an appropriated customer group.
 
       requestBody:
         required: true
