@@ -22,8 +22,14 @@ class InstanceConnectionBaker
 	public static function makeByInstance(Instance $instance, bool $setInApp = true): Connection
 	{
 		$host = $_SERVER['INSTANCE_DB_HOST'] ?? $instance->config['db']['config']['host'];
+		$dsn = 'pgsql:host=' . $host . ';dbname=' . $instance->config['db']['name'];
+
+		if (!empty($_SERVER['INSTANCE_DB_SSL'])) {
+			$dsn .= ';sslmode=require';
+		}
+
 		$connection = new Connection([
-			'dsn' => 'pgsql:host=' . $host . ';dbname=' . $instance->config['db']['name'],
+			'dsn' => $dsn,
 			'username' => $instance->config['db']['user'],
 			'password' => $instance->config['db']['pass'],
 			'charset' => 'utf8',

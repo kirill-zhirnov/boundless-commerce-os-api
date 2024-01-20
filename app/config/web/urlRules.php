@@ -61,6 +61,9 @@ return [
 			'GET <id>' => 'view',
 		]
 	],
+	'GET catalog/admin/prices' => 'catalog/admin/prices/index',
+
+
 	'PATCH orders/cart/<id>/qty' => 'orders/cart/patch-set-qty',
 	'POST orders/cart/<id>/validate' => 'orders/cart/validate-stock',
 	[
@@ -178,6 +181,13 @@ return [
 		]
 	],
 	'GET user/admin/customers' => 'user/admin/customer/index',
+	'PUT user/admin/customers/<customerId>/groups' => 'user/admin/customer/set-groups',
+
+	'GET user/admin/customer-groups' => 'user/admin/customer-group/index',
+	'POST user/admin/customer-groups' => 'user/admin/customer-group/form',
+	'PUT user/admin/customer-groups/<id>' => 'user/admin/customer-group/form',
+	'DELETE user/admin/customer-groups/<id>' => 'user/admin/customer-group/delete',
+
 //	[
 //		'class' => 'yii\rest\UrlRule',
 //		'controller' => 'user/admin/customer',

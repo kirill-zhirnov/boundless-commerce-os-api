@@ -2,27 +2,32 @@
 
 namespace app\modules\catalog\controllers;
 
+use app\components\filters\HttpCustomerAuth;
 use app\components\RestController;
 use app\modules\catalog\components\ProductLoader;
-use app\modules\catalog\models\Category;
-use app\modules\catalog\models\PointSale;
-use app\modules\catalog\models\Price;
 use app\modules\catalog\models\Variant;
 use app\modules\catalog\searchModels\FilterFieldsSearch;
 use app\modules\catalog\traits\ProductHelpers;
 use app\modules\system\models\Lang;
 use Yii;
-use app\modules\catalog\models\Product;
 use app\modules\catalog\searchModels\ProductSearch;
 use yii\base\DynamicModel;
 use yii\db\ActiveQuery;
-use yii\db\Expression;
 use yii\helpers\ArrayHelper;
-use yii\web\HttpException;
 
 class ProductController extends RestController
 {
 	use ProductHelpers;
+
+	public function behaviors(): array
+	{
+		return ArrayHelper::merge(parent::behaviors(), [
+			'customerAuth' => [
+				'class' => HttpCustomerAuth::class,
+				'isAuthOptional' => true
+			]
+		]);
+	}
 
 	protected function verbs(): array
 	{

@@ -5,17 +5,20 @@ namespace app\modules\catalog\searchModels;
 use app\modules\catalog\models\Category;
 use app\modules\catalog\models\Characteristic;
 use app\modules\catalog\models\Collection;
+use app\modules\catalog\models\FinalPrice;
 use app\modules\catalog\models\PointSale;
 use app\modules\catalog\models\Price;
 use app\modules\catalog\models\Product;
 use app\modules\catalog\models\VwProductList;
 use app\modules\system\models\Lang;
+use app\modules\user\models\Person;
 use yii\base\Model;
 use yii\data\ActiveDataProvider;
 use yii\db\ActiveQuery;
 use yii\db\Expression;
 use yii\web\BadRequestHttpException;
 use Yii;
+use yii\web\User;
 
 class ProductSearch extends Model
 {
@@ -67,8 +70,8 @@ class ProductSearch extends Model
 			['text_search', 'string', 'length' => [3, 20]],
 			['text_search', 'trim'],
 			['text_search', 'filter', 'filter' => 'mb_strtolower'],
-            ['removed', 'in', 'range' => ['all', 'removed']],
-            ['published_status', 'in', 'range' => ['all', 'hidden']]
+			['removed', 'in', 'range' => ['all', 'removed']],
+			['published_status', 'in', 'range' => ['all', 'hidden']]
 		];
 	}
 
@@ -101,6 +104,9 @@ class ProductSearch extends Model
 		$this->query
 			->alias('vw')
 			->select(new Expression('distinct on ('.$this->getSqlDistinct().' ) vw.*'))
+			->with(['finalPrices' => function(ActiveQuery $query) {
+				FinalPrice::addFinalPricesSelect($query);
+			}])
 			->with(['finalPrices.currency', 'finalPrices.price'])
 		;
 

@@ -74,7 +74,7 @@ class ProductLoader
 //			->addProductPriceSelect()
 			->addProductImagesSelect()
 			->with(['productProp'])
-			->with(['inventoryItem.finalPrices.currency', 'inventoryItem.finalPrices.price'])
+			->withFinalPrices()
 			->with(['manufacturer' => function (ActiveQuery $query) {
 				$query->where(['manufacturer.deleted_at' => null]);
 			}])

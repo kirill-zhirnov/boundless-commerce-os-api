@@ -2,9 +2,12 @@
 
 namespace app\modules\catalog\models;
 
+use app\modules\user\models\Person;
 use Yii;
 use app\modules\inventory\models\InventoryItem;
 use app\modules\system\models\Currency;
+use yii\db\ActiveQuery;
+use yii\web\User;
 
 /**
  * This is the model class for table "final_price".
@@ -119,10 +122,38 @@ class FinalPrice extends \yii\db\ActiveRecord
 		return $this->hasOne(Price::class, ['price_id' => 'price_id']);
 	}
 
+	public static function addFinalPricesSelect(ActiveQuery $query)
+	{
+		/** @var User $customerUser */
+		$customerUser = Yii::$app->customerUser;
+
+		$query->innerJoinWith('price');
+
+		if ($customerUser->isGuest) {
+			$query->where('price.is_public is true');
+		} else {
+			/** @var Person $person */
+			$person = $customerUser->getIdentity()->getPerson();
+
+			$query->where('
+				price.is_public is true
+				or exists (
+					select 1
+					from
+						person_group_rel
+						inner join price_group_rel using(group_id)
+					where
+						person_id = :personId
+						and final_price.price_id = price_group_rel.price_id
+				)
+			', ['personId' => $person->person_id]);
+		}
+	}
+
 	public function fields(): array
 	{
 		$fields = parent::fields();
-		unset($fields['point_id'], $fields['item_id'], $fields['price_id'], $fields['currency_id'], $fields['is_auto_generated']);
+		unset($fields['point_id'], $fields['item_id'], $fields['currency_id'], $fields['is_auto_generated']);
 
 		$fields['price_alias'] = fn () => $this->price->alias;
 		$fields['currency_alias'] = fn () => $this->currency->alias;

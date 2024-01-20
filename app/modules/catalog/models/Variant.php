@@ -6,6 +6,7 @@ use Yii;
 use app\modules\system\models\Lang;
 use app\modules\inventory\models\InventoryItem;
 use app\modules\inventory\models\VwTrackInventory;
+use yii\db\ActiveQuery;
 
 /**
  * This is the model class for table "variant".
@@ -176,6 +177,9 @@ class Variant extends \yii\db\ActiveRecord
 //		$out['list'] = self::loadProductVariants($productId);
 		$out['list'] = Variant::find()
 			->with(['variantTextDefault'])
+			->with(['inventoryItem.finalPrices' => function(ActiveQuery $query) {
+				FinalPrice::addFinalPricesSelect($query);
+			}])
 			->with(['inventoryItem.finalPrices.currency', 'inventoryItem.finalPrices.price'])
 			->with(['inventoryItem.vwTrackInventory'])
 			->where([

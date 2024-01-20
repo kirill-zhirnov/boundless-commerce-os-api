@@ -2,6 +2,7 @@
 
 namespace app\modules\orders\controllers;
 
+use app\components\filters\HttpCustomerAuth;
 use app\modules\orders\components\OrderItems;
 use app\modules\orders\formModels\cart\InStockValidatorForm;
 use app\modules\orders\formModels\CartAddCustomItem;
@@ -19,6 +20,16 @@ use app\validators\UuidValidator;
 
 class CartController extends RestController
 {
+	public function behaviors(): array
+	{
+		return ArrayHelper::merge(parent::behaviors(), [
+			'customerAuth' => [
+				'class' => HttpCustomerAuth::class,
+				'isAuthOptional' => true
+			]
+		]);
+	}
+
 	protected function verbs()
 	{
 		return [

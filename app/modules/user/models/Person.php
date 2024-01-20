@@ -42,6 +42,7 @@ use app\modules\orders\models\Orders;
  * @property ProductReview[] $productReviews
  * @property Role[] $roles
  * @property Site $site
+ * @property CustomerGroup[] $customerGroups
  */
 class Person extends \yii\db\ActiveRecord
 {
@@ -276,6 +277,12 @@ class Person extends \yii\db\ActiveRecord
 	public function getSite()
 	{
 		return $this->hasOne(Site::class, ['site_id' => 'site_id']);
+	}
+
+	public function getCustomerGroups()
+	{
+		return $this->hasMany(CustomerGroup::class, ['group_id' => 'group_id'])
+			->viaTable('person_group_rel', ['person_id' => 'person_id']);
 	}
 
 	public function createAuthToken(): string
@@ -519,6 +526,23 @@ class Person extends \yii\db\ActiveRecord
 		return $person;
 	}
 
+	public function assignGroup(CustomerGroup $group)
+	{
+		self::getDb()->createCommand("
+			insert into person_group_rel
+				(person_id, group_id)
+			values
+				(:person, :group)
+			on conflict do nothing
+		")
+			->bindValues([
+				'person' => $this->person_id,
+				'group' => $group->group_id
+			])
+			->execute()
+		;
+	}
+
 	public function fields(): array
 	{
 		$out = [
@@ -551,6 +575,10 @@ class Person extends \yii\db\ActiveRecord
 			$out['addresses'] = function (self $model) {
 				return $model->personAddresses;
 			};
+		}
+
+		if ($this->isRelationPopulated('customerGroups')) {
+			$out['groups'] = fn (self $model) => $model->customerGroups;
 		}
 
 		return $out;

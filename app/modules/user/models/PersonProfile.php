@@ -13,13 +13,11 @@ use yii\helpers\ArrayHelper;
  * @property string|null $first_name
  * @property string|null $last_name
  * @property string|null $patronymic
- * @property int|null $group_id
  * @property string|null $phone
  * @property bool $receive_marketing_info
  * @property string|null $comment
  * @property string|null $custom_attrs
  *
- * @property CustomerGroup $group
  * @property Person $person
  */
 class PersonProfile extends \yii\db\ActiveRecord
@@ -47,8 +45,8 @@ class PersonProfile extends \yii\db\ActiveRecord
 	{
 		return [
 			[['person_id'], 'required'],
-			[['person_id', 'group_id'], 'default', 'value' => null],
-			[['person_id', 'group_id'], 'integer'],
+			[['person_id'], 'default', 'value' => null],
+			[['person_id'], 'integer'],
 			[['first_name', 'last_name', 'patronymic', 'comment'], 'string'],
 			[['receive_marketing_info'], 'boolean'],
 			[['custom_attrs'], 'safe'],
@@ -66,7 +64,6 @@ class PersonProfile extends \yii\db\ActiveRecord
 			'first_name' => 'First Name',
 			'last_name' => 'Last Name',
 			'patronymic' => 'Patronymic',
-			'group_id' => 'Group ID',
 			'phone' => 'Phone',
 			'receive_marketing_info' => 'Receive Marketing Info',
 			'comment' => 'Comment',
@@ -85,16 +82,6 @@ class PersonProfile extends \yii\db\ActiveRecord
 		]);
 
 		return true;
-	}
-
-	/**
-	 * Gets query for [[Group]].
-	 *
-	 * @return \yii\db\ActiveQuery
-	 */
-	public function getGroup()
-	{
-		return $this->hasOne(CustomerGroup::className(), ['group_id' => 'group_id']);
 	}
 
 	/**

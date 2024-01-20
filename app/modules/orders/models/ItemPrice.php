@@ -106,7 +106,7 @@ class ItemPrice extends \yii\db\ActiveRecord
 	 */
 	public function getOrderServices()
 	{
-		return $this->hasMany(OrderService::className(), ['item_price_id' => 'item_price_id']);
+		return $this->hasMany(OrderService::class, ['item_price_id' => 'item_price_id']);
 	}
 
 	/**

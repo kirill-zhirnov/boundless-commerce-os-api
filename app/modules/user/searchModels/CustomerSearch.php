@@ -32,7 +32,7 @@ class CustomerSearch extends Model
 
 		$query = Person::find()
 			->innerJoinWith('personProfile')
-			->with(['personAddresses'])
+			->with(['personAddresses', 'customerGroups'])
 			->where(['person.status' => Person::STATUS_PUBLISHED])
 			->andWhere('person.deleted_at is null')
 		;

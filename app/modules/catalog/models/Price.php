@@ -2,6 +2,8 @@
 
 namespace app\modules\catalog\models;
 
+use app\modules\system\models\Lang;
+use app\modules\user\models\CustomerGroup;
 use Yii;
 use app\modules\inventory\models\InventoryItem;
 use app\modules\inventory\models\InventoryPrice;
@@ -21,6 +23,8 @@ use app\modules\inventory\models\InventoryPrice;
  * @property InventoryPrice[] $inventoryPrices
  * @property ItemPrice[] $itemPrices
  * @property InventoryItem[] $items
+ * @property PriceText $priceTextDefault
+ * @property PriceGroupRel[] $priceGroupRels
  */
 class Price extends \yii\db\ActiveRecord
 {
@@ -75,16 +79,6 @@ class Price extends \yii\db\ActiveRecord
 	}
 
 	/**
-	 * Gets query for [[CustomerGroups]].
-	 *
-	 * @return \yii\db\ActiveQuery
-	 */
-	public function getCustomerGroups()
-	{
-		return $this->hasMany(CustomerGroup::className(), ['price_id' => 'price_id']);
-	}
-
-	/**
 	 * Gets query for [[FinalPrices]].
 	 *
 	 * @return \yii\db\ActiveQuery
@@ -124,8 +118,46 @@ class Price extends \yii\db\ActiveRecord
 		return $this->hasMany(InventoryItem::class, ['item_id' => 'item_id'])->viaTable('inventory_price', ['price_id' => 'price_id']);
 	}
 
+	public function getPriceTextDefault()
+	{
+		return $this->hasOne(PriceText::class, ['price_id' => 'price_id'])
+			->andWhere(['price_text.lang_id' => Lang::DEFAULT_LANG])
+		;
+	}
+
+	public function getPriceGroupRels()
+	{
+		return $this->hasMany(PriceGroupRel::class, ['price_id' => 'price_id']);
+	}
+
+	public function getCustomerGroups()
+	{
+		return $this->hasMany(CustomerGroup::class, ['group_id' => 'group_id'])
+			->viaTable('price_group_rel', ['price_id' => 'price_id'])
+		;
+	}
+
 	public function isSellingPrice(): bool
 	{
 		return $this->alias === self::ALIAS_SELLING_PRICE;
+	}
+
+	public function fields(): array
+	{
+		$out = [
+			'price_id',
+			'title' => fn () => $this->priceTextDefault->title,
+			'alias',
+			'has_old_price',
+			'is_public',
+			'created_at',
+			'deleted_at'
+		];
+
+		if ($this->isRelationPopulated('customerGroups')) {
+			$out['customerGroups'] = fn () => $this->customerGroups;
+		}
+
+		return $out;
 	}
 }

@@ -15,6 +15,7 @@ class InstancesQueue extends BaseObject
 {
 	const TYPE_CREATED = 'created';
 	const TYPE_UPDATED = 'updated';
+	const TYPE_ARCHIVED = 'archived';
 	const TYPE_SEND_MAIL = 'send-mail';
 	const MAIL_RESTORE_PASSWORD = 'restorePassword';
 	const MAIL_WELCOME_EMAIL = 'welcomeEmail';
@@ -106,6 +107,18 @@ class InstancesQueue extends BaseObject
 		return $this->publishMsg($instanceId, self::TYPE_UPDATED, $data);
 	}
 
+	public function modelArchived(string $model, array $pkList)
+	{
+		$instanceId = $this->extractInstanceId();
+
+		$data = [
+			'pkList' => $pkList,
+			'model' => $this->getNodeModelByClass($model)
+		];
+
+		return $this->publishMsg($instanceId, self::TYPE_ARCHIVED, $data);
+	}
+
 	public function sendMail(string $mail, array|null $options = null)
 	{
 		$instanceId = $this->extractInstanceId();
@@ -137,15 +150,16 @@ class InstancesQueue extends BaseObject
 	protected function getNodeModelByClass($model)
 	{
 		switch ($model) {
-			case Category::class:
-				return 'category';
-			case Orders::class:
-				return 'orders';
-			case Product::class:
-				return 'product';
+//			case Category::class:
+//				return 'category';
+//			case Orders::class:
+//				return 'orders';
+//			case Product::class:
+//				return 'product';
 
 			default:
-				throw new \RuntimeException('Unsupported class notification: "' . $model . '"');
+				return $model::tableName();
+//				throw new \RuntimeException('Unsupported class notification: "' . $model . '"');
 		}
 	}
 }

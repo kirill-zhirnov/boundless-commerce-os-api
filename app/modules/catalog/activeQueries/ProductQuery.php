@@ -2,11 +2,15 @@
 
 namespace app\modules\catalog\activeQueries;
 
+use app\modules\catalog\models\FinalPrice;
 use app\modules\catalog\models\PointSale;
 use app\modules\catalog\models\Price;
 use app\modules\system\models\Lang;
+use app\modules\user\models\Person;
 use yii\db\ActiveQuery;
 use yii\db\Expression;
+use Yii;
+use yii\web\User;
 
 class ProductQuery extends ActiveQuery
 {
@@ -18,6 +22,17 @@ class ProductQuery extends ActiveQuery
 			->with('inventoryItem.vwTrackInventory')
 		;
 
+		return $this;
+	}
+
+	public function withFinalPrices(): self
+	{
+		$this
+			->with(['inventoryItem.finalPrices' => function(ActiveQuery $query) {
+				FinalPrice::addFinalPricesSelect($query);
+			}])
+			->with(['inventoryItem.finalPrices.currency', 'inventoryItem.finalPrices.price'])
+		;
 		return $this;
 	}
 

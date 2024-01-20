@@ -2,11 +2,15 @@
 
 namespace app\modules\orders\formModels;
 
+use app\modules\catalog\models\FinalPrice;
+use app\modules\catalog\models\PointSale;
+use app\modules\catalog\models\Price;
 use app\modules\catalog\models\Variant;
 use app\modules\inventory\models\InventoryItem;
 use app\modules\orders\components\OrderItems;
 use app\modules\orders\models\ItemPrice;
 use app\modules\system\models\Lang;
+use app\modules\user\models\Person;
 use Yii;
 use app\modules\catalog\models\Product;
 use app\modules\inventory\models\VwInventoryItem;
@@ -14,6 +18,7 @@ use app\modules\orders\models\Basket;
 use yii\base\Model;
 use yii\db\ActiveQuery;
 use app\validators\UuidValidator;
+use yii\web\User;
 
 class Item2CartForm extends Model
 {
@@ -21,10 +26,14 @@ class Item2CartForm extends Model
 	public $item_id;
 	public $qty;
 	public $validate_stock;
+	public $price_id;
+	public $price_alias;
 
 	protected InventoryItem|null $inventoryItem;
 
 	protected Basket|null $basket;
+
+	protected ?Price $price;
 
 	public function rules(): array
 	{
@@ -36,6 +45,8 @@ class Item2CartForm extends Model
 			[['validate_stock'], 'boolean'],
 			[['item_id'], 'validateItem'],
 			[['cart_id'], 'validateBasket'],
+			['price_id', 'validatePrice', 'skipOnEmpty' => false],
+			['price_alias', 'safe']
 		];
 	}
 
@@ -80,7 +91,20 @@ class Item2CartForm extends Model
 			}
 		}
 
-		$price = $vwInventoryItem->getSellingPrice();
+		if (isset($this->price)) {
+			$finalPrice = FinalPrice::find()
+				->where([
+					'point_id' => PointSale::DEFAULT_POINT,
+					'item_id' => $this->item_id,
+					'price_id' => $this->price->price_id
+				])
+				->one()
+			;
+			$price = $finalPrice->toArray();
+		} else {
+			$price = $vwInventoryItem->getSellingPrice();
+		}
+
 //		if (is_null($price)) {
 //			$this->addError('item_id', 'Products without price cannot be added to the cart.');
 //			return false;
@@ -96,7 +120,8 @@ class Item2CartForm extends Model
 			'cartTotal' => $this->basket->calcTotal(),
 			'added' => [
 				'item' => $vwInventoryItem,
-				'qty' => intval($this->qty)
+				'qty' => intval($this->qty),
+				'price' => $itemPrice
 			]
 		];
 	}
@@ -113,7 +138,7 @@ class Item2CartForm extends Model
 				$query->where(['product_text.lang_id' => Lang::DEFAULT_LANG]);
 			}])
 			->with(['productProp'])
-			->with(['inventoryItem.finalPrices.currency', 'inventoryItem.finalPrices.price'])
+			->withFinalPrices()
 			->andWhere(['product.product_id' => $this->inventoryItem->product_id])
 			->one()
 		;
@@ -152,6 +177,52 @@ class Item2CartForm extends Model
 
 		if (!$this->basket) {
 			$this->addError('cart_id', 'Cart not found or not active.');
+			return;
+		}
+	}
+
+	public function validatePrice()
+	{
+		if (empty($this->price_id) && empty($this->price_alias)) {
+			return;
+		}
+
+		$query = Price::find();
+
+		$attr = null;
+		/** @var User $customerUser */
+		$customerUser = Yii::$app->customerUser;
+		if ($customerUser->isGuest) {
+			$query->where('price.is_public is true');
+		} else {
+			/** @var Person $person */
+			$person = $customerUser->getIdentity()->getPerson();
+
+			$query->where('
+				price.is_public is true
+				or exists (
+					select 1
+					from
+						person_group_rel
+						inner join price_group_rel using(group_id)
+					where
+						person_id = :personId
+						and price.price_id = price_group_rel.price_id
+				)
+			', ['personId' => $person->person_id]);
+		}
+
+		if ($this->price_id) {
+			$attr = 'price_id';
+			$query->andWhere(['price_id' => intval($this->price_id)]);
+		} else {
+			$attr = 'price_alias';
+			$query->andWhere(['alias' => $this->price_alias]);
+		}
+
+		$this->price = $query->one();
+		if (!$this->price) {
+			$this->addError($attr, Yii::t('app', 'Price not found. Make sure your user has access to the selected price'));
 			return;
 		}
 	}

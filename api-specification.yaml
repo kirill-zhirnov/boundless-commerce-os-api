@@ -56,6 +56,7 @@ x-tagGroups:
       - Product types
       - Attributes
       - Filters
+      - Price Types
 
   - name: Files
     tags:
@@ -72,6 +73,8 @@ x-tagGroups:
   - name: Users
     tags:
       - Customers
+      - Manage Customers
+      - Customer Groups
 
   - name: System
     tags:
@@ -84,6 +87,7 @@ tags:
   - name: Product types
   - name: Attributes
   - name: Filters
+  - name: Price Types
   - name: Cart
     description: >
       ## How to work with the Cart?
@@ -149,6 +153,20 @@ tags:
 
   - name: Order Statuses
   - name: Customers
+  - name: Manage Customers
+    description: >
+      ## Methods for managing Customers
+
+      **Methods are allowed only for tokens with management rights.**
+
+
+  - name: Customer Groups
+    description: >
+      ## Methods for managing Customer Groups
+
+      **Methods are allowed only for tokens with management rights.**
+
+
   - name: System
   - name: Images
 
@@ -903,6 +921,15 @@ paths:
           schema:
             type: integer
 
+  /catalog/admin/prices:
+    get:
+      tags:
+        - Price Types
+      summary: Get Price Types
+      description: >
+        **Action allowed only for tokens with management rights.**
+
+
   /files/images/upload:
     post:
       tags:
@@ -1036,6 +1063,18 @@ paths:
                 validate_stock:
                   type: boolean
                   description: If true - the quantity of the adding item will be validated for being in stock.
+
+                price_id:
+                  type: integer
+                  description: >
+                    If you want to specify a price type - pass `price_id` OR `price_alias` (but not both).
+                    A customer should have access to the given price (be assigned to an appropriate customer group).
+
+                price_alias:
+                  type: string
+                  description: >
+                    If you want to specify a price type - pass `price_id` OR `price_alias` (but not both).
+                    A customer should have access to the given price (be assigned to an appropriate customer group).
 
   /orders/cart/{cart_id}/total:
     get:
@@ -1906,30 +1945,15 @@ paths:
                 password_repeat:
                   type: string
 
-  /user/admin/customers:
-    get:
-      tags:
-        - Customers
-      summary: Fetches customers list.
-      description: >
-        **Action allowed only for tokens with management rights.** Fetches customers list.
-      parameters:
-        - name: name
-          in: query
-          description: >
-            Filter by Customer's name.
-        - name: email
-          in: query
-          description: >
-            Filter by Customer's email.
-
   /user/admin/auth/make-magick-link:
     post:
       tags:
         - Customers
       summary: Creates magick link (for auth).
       description: >
-        **Action allowed only for tokens with management rights.** Creates magick link.
+        **Action allowed only for tokens with management rights.**
+
+        Creates magick link.
       requestBody:
         required: true
         content:
@@ -1992,6 +2016,101 @@ paths:
                   type: object
                   description: Arbitrary data related to the Customer. Should be an object.
 
+  /user/admin/customers:
+    get:
+      tags:
+        - Manage Customers
+      summary: Fetches customers list.
+      parameters:
+        - name: name
+          in: query
+          description: >
+            Filter by Customer's name.
+        - name: email
+          in: query
+          description: >
+            Filter by Customer's email.
+
+  /user/admin/customers/{customer_id}/groups:
+    put:
+      tags:
+        - Manage Customers
+      summary: Assign customer to a group
+      description: >
+        Assign customer to a group. E.g. `{groups: [1,2]}` - will assign a customer to groups with IDs 1 and 2.
+
+
+        If you want to remove a customer from all groups - pass an empty array: `{groups: []}`.
+
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                groups:
+                  type: array
+                  items:
+                      type: integer
+
+  /user/admin/customer-groups:
+    get:
+      tags:
+        - Customer Groups
+      summary: Fetches customer groups list.
+      description: >
+        Fetches customer groups list.
+
+    post:
+      tags:
+        - Customer Groups
+      summary: Creates a customer group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerGroupModel'
+              required:
+                - title
+
+  /user/admin/customer-groups/{group_id}:
+    put:
+      tags:
+        - Customer Groups
+      summary: Update a Customer group
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerGroupModel'
+              required:
+                - title
+    delete:
+      tags:
+        - Customer Groups
+      summary: Deletes a Customer group
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: integer
 
   /system/settings:
     get:
@@ -2319,3 +2438,18 @@ components:
           type: string
         comment:
           type: string
+
+    CustomerGroupModel:
+      type: object
+      properties:
+        title:
+          type: string
+          example: 'VIP Customers'
+          maxLength: 255
+        alias:
+          type: string
+          maxLength: 255
+          pattern: '^[a-z0-9\-_]*$'
+          example: 'vip-customers'
+          description: >
+            A unique key to make distinguish between groups.
