@@ -92,9 +92,11 @@ class RegisterCustomerForm extends Model
 
 		PersonAuth::setPass($this->person->person_id, $this->password);
 
+		/** @var InstancesQueue $queue */
+		$queue = Yii::$app->queue;
+		$queue->modelCreated(Person::class, [$this->person->person_id]);
+
 		if ($this->send_welcome_email) {
-			/** @var InstancesQueue $queue */
-			$queue = Yii::$app->queue;
 			$queue->sendMail(InstancesQueue::MAIL_WELCOME_EMAIL, [
 				'email' => $this->email,
 				'firstName' => $this->first_name === '' ? null : $this->first_name,
