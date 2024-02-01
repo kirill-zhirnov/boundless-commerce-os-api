@@ -7,6 +7,7 @@ use app\modules\system\models\Lang;
 use app\modules\inventory\models\InventoryItem;
 use app\modules\inventory\models\VwTrackInventory;
 use yii\db\ActiveQuery;
+use yii\helpers\ArrayHelper;
 
 /**
  * This is the model class for table "variant".
@@ -173,9 +174,7 @@ class Variant extends \yii\db\ActiveRecord
 
 	public static function loadVariantsForTpl($productId): array
 	{
-		$out = self::loadCharacteristics($productId);
-//		$out['list'] = self::loadProductVariants($productId);
-		$out['list'] = Variant::find()
+		$variants = Variant::find()
 			->with(['variantTextDefault'])
 			->with(['inventoryItem.finalPrices' => function(ActiveQuery $query) {
 				FinalPrice::addFinalPricesSelect($query);
@@ -189,6 +188,13 @@ class Variant extends \yii\db\ActiveRecord
 			->orderBy(['variant_id' => SORT_ASC])
 			->all()
 		;
+
+		return ArrayHelper::merge([
+			'list' => $variants
+		], self::loadCharacteristics($productId));
+
+//		$out = self::loadCharacteristics($productId);
+//		$out['list'] = self::loadProductVariants($productId);
 
 		return $out;
 	}

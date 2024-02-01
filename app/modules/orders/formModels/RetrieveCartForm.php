@@ -3,12 +3,12 @@
 namespace app\modules\orders\formModels;
 
 use app\modules\orders\models\Basket;
+use Yii;
+use yii\web\User;
 
 class RetrieveCartForm extends \yii\base\Model
 {
-	public $person;
-
-	protected Basket $basket;
+	protected ?Basket $basket;
 
 	public function rules(): array
 	{
@@ -24,19 +24,23 @@ class RetrieveCartForm extends \yii\base\Model
 			return false;
 		}
 
-		//если юзер передан, то нужно переделать на select * from basket_get(:person) -
-		//получать активную корзину текущего юзера
-		$this->basket = new Basket();
-		if (!$this->basket->save()) {
-			throw new \RuntimeException('Cannot save basket');
+		/** @var User $customerUser */
+		$customerUser = Yii::$app->customerUser;
+		if ($customerUser->isGuest) {
+			$this->basket = new Basket();
+			$this->basket->save(false);
+			$this->basket->refresh();
+		} else {
+			$person = $customerUser->getIdentity()->getPerson();
+			$this->basket = Basket::findOrCreatePersonBasket($person);
 		}
-		$this->basket->refresh();
+
 		$this->basket->calcTotal();
 
 		return true;
 	}
 
-	public function getBasket(): Basket
+	public function getBasket(): ?Basket
 	{
 		return $this->basket;
 	}

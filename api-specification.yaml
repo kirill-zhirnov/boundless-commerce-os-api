@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Boundless-commerce API
-  version: 1.1.26
+  version: 1.1.27
   contact:
     name: Support team
     email: info@boundless-commerce.com
@@ -1036,6 +1036,16 @@ paths:
       description: >
         Please see section [How to work with the Cart?](/#tag/Cart)
 
+      parameters:
+        - in: header
+          name: X-Customer
+          schema:
+            type: string
+            format: uuid
+            description: >
+              If customer is authorized and there is an existing cart related to the customer - it will be returned instead of
+              creating the new one.
+
   /orders/cart/add:
     post:
       tags:
@@ -1875,6 +1885,16 @@ paths:
                   format: email
                 password:
                   type: string
+                cart_id:
+                  type: string
+                  format: uuid
+                  description: >
+                    Pass optional guest's `cart_id`:
+
+                    - If authorized customer has already had active cart -
+                    the guest's cart is merged into the active cart and the `activeCart` is returned.
+
+                    - If authorized customer hasn't had an active cart - the guest's cart is bound to the customer's one.
 
   /user/auth/validate-magick-link:
     post:

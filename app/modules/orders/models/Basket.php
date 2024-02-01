@@ -163,6 +163,44 @@ class Basket extends \yii\db\ActiveRecord
 		return $this->is_active;
 	}
 
+	public function copyItemsTo(Basket $toBasket)
+	{
+		self::getDb()
+			->createCommand("
+				insert into basket_item (basket_id, item_id, qty, item_price_id)
+				select
+					:toBasketId, item_id, qty, item_price_id
+				from
+					basket_item
+				where
+					basket_id = :currentBasketId
+					and deleted_at is null
+					and not exists(
+						select 1 from basket_item to_basket_item
+					 	where
+							to_basket_item.item_id = basket_item.item_id
+					    and to_basket_item.basket_id = :toBasketId
+					)
+			")
+			->bindValues([
+				'toBasketId' => $toBasket->basket_id,
+				'currentBasketId' => $this->basket_id
+			])
+			->execute();
+		;
+	}
+
+	public static function findOrCreatePersonBasket(Person $person): Basket
+	{
+		$row = self::getDb()
+			->createCommand("select * from basket_get(:personId)")
+			->bindValues(['personId' => $person->person_id])
+			->queryOne()
+		;
+
+		return Basket::findOne($row['basket_id']);
+	}
+
 	public function fields(): array
 	{
 //		$fields = parent::fields();
