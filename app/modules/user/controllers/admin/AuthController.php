@@ -55,9 +55,17 @@ class AuthController extends RestController
 		}
 
 		$person = $model->getPerson();
-		return [
+		$cart = $model->getCart();
+
+		$out = [
 			'person' => $person,
 			'authToken' => $person->createAuthToken()
 		];
+
+		if ($cart) {
+			$out['activeCart'] = $cart;
+		}
+
+		return $out;
 	}
 }

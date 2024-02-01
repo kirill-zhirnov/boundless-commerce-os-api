@@ -5,13 +5,15 @@ namespace app\modules\user\formModels;
 use app\modules\system\models\Site;
 use app\modules\user\models\Person;
 use app\modules\orders\models\Basket;
-use app\modules\orders\models\BasketItem;
 use app\validators\UuidValidator;
 use yii\base\Model;
 use Yii;
+use app\modules\user\traits\CustomerHelpers;
 
 class CustomerLoginForm extends Model
 {
+	use CustomerHelpers;
+
 	public $email;
 	public $password;
 	public $cart_id;
@@ -53,7 +55,7 @@ class CustomerLoginForm extends Model
 		}
 
 		if ($this->cart_id) {
-			$this->processCustomerCart();
+			$this->processCustomerCartOnLogin($this->person, $this->cart_id);
 			$this->cart = Basket::findOrCreatePersonBasket($this->person);
 			$this->cart->calcTotal();
 		}
@@ -69,33 +71,33 @@ class CustomerLoginForm extends Model
 		return $this->cart;
 	}
 
-	protected function processCustomerCart()
-	{
-		$existingActiveCart = Basket::find()
-			->where(['person_id' => $this->person->person_id, 'is_active' => true])
-			->one()
-		;
-
-		/** @var Basket $guestCart */
-		$guestCart = Basket::find()
-			->where(['public_id' => $this->cart_id, 'is_active' => true, 'person_id' => null])
-			->one()
-		;
-
-		if (!$guestCart) {
-			return;
-		}
-
-		if (!$existingActiveCart) {
-			Basket::updateAll(['person_id' => $this->person->person_id], [
-				'basket_id' => $guestCart->basket_id,
-				'person_id' => null
-			]);
-			return;
-		}
-
-		//if both cart exist - merge baskets - copy basket items from guest to existing Active
-		$guestCart->copyItemsTo($existingActiveCart);
-		$guestCart->makeInactive();
-	}
+//	protected function processCustomerCart()
+//	{
+//		$existingActiveCart = Basket::find()
+//			->where(['person_id' => $this->person->person_id, 'is_active' => true])
+//			->one()
+//		;
+//
+//		/** @var Basket $guestCart */
+//		$guestCart = Basket::find()
+//			->where(['public_id' => $this->cart_id, 'is_active' => true, 'person_id' => null])
+//			->one()
+//		;
+//
+//		if (!$guestCart) {
+//			return;
+//		}
+//
+//		if (!$existingActiveCart) {
+//			Basket::updateAll(['person_id' => $this->person->person_id], [
+//				'basket_id' => $guestCart->basket_id,
+//				'person_id' => null
+//			]);
+//			return;
+//		}
+//
+//		//if both cart exist - merge baskets - copy basket items from guest to existing Active
+//		$guestCart->copyItemsTo($existingActiveCart);
+//		$guestCart->makeInactive();
+//	}
 }

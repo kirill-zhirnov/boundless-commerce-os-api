@@ -2,8 +2,10 @@
 
 namespace app\modules\user\formModels;
 
+use app\modules\orders\models\Basket;
 use app\modules\system\models\Site;
 use app\modules\user\models\PersonProfile;
+use app\modules\user\traits\CustomerHelpers;
 use app\modules\user\validators\CustomAttrsValidator;
 use app\validators\UuidValidator;
 use yii\base\Model;
@@ -13,14 +15,18 @@ use yii\db\Expression;
 
 class AuthOrCreateForm extends Model
 {
+	use CustomerHelpers;
+
 	public $email;
 	public $id;
 	public $first_name;
 	public $last_name;
 	public $phone;
 	public $custom_attrs;
+	public $cart_id;
 
 	protected ?Person $person;
+	protected Basket|null $cart = null;
 
 	public function rules(): array
 	{
@@ -33,6 +39,7 @@ class AuthOrCreateForm extends Model
 			[['first_name', 'last_name'], 'trim'],
 			['phone', 'trim'],
 			['custom_attrs', CustomAttrsValidator::class],
+			['cart_id', UuidValidator::class]
 		];
 	}
 
@@ -52,6 +59,12 @@ class AuthOrCreateForm extends Model
 		$this->person = $query->one();
 		if (!$this->person) {
 			$this->registerCustomer();
+		}
+
+		if ($this->cart_id) {
+			$this->processCustomerCartOnLogin($this->person, $this->cart_id);
+			$this->cart = Basket::findOrCreatePersonBasket($this->person);
+			$this->cart->calcTotal();
 		}
 
 		return true;
@@ -105,5 +118,10 @@ class AuthOrCreateForm extends Model
 	public function getPerson(): ?Person
 	{
 		return $this->person;
+	}
+
+	public function getCart(): Basket|null
+	{
+		return $this->cart;
 	}
 }

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Boundless-commerce API
-  version: 1.1.27
+  version: 1.1.28
   contact:
     name: Support team
     email: info@boundless-commerce.com
@@ -2059,6 +2059,17 @@ paths:
                 custom_attrs:
                   type: object
                   description: Arbitrary data related to the Customer. Should be an object.
+                cart_id:
+                  type: string
+                  format: uuid
+                  description: >
+                    Pass optional guest's `cart_id`:
+
+                    - If authorized customer has already had active cart -
+                    the guest's cart is merged into the active cart and the `activeCart` is returned.
+
+                    - If authorized customer hasn't had an active cart - the guest's cart is bound to the customer's one.
+
 
   /user/admin/customers:
     get:
