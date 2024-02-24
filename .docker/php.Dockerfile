@@ -1,4 +1,4 @@
-FROM php:8.0-apache
+FROM php:8.1-apache
 RUN apt-get update && apt-get install -y libpq-dev libsodium-dev libmemcached-dev zlib1g-dev libzip-dev imagemagick libmagickwand-dev \
 	&& docker-php-ext-install pdo pdo_pgsql bcmath sodium zip sockets \
 	&& pecl install memcached \
