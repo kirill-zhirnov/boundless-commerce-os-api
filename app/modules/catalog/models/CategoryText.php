@@ -97,12 +97,12 @@ class CategoryText extends \yii\db\ActiveRecord
 
 	public function getDescriptionTopAsText(): string
 	{
-		return trim(strip_tags($this->description_top));
+		return trim(strip_tags($this->description_top ?? ''));
 	}
 
 	public function getDescriptionBottomAsText(): string
 	{
-		return trim(strip_tags($this->description_bottom));
+		return trim(strip_tags($this->description_bottom ?? ''));
 	}
 
 	public function fields(): array

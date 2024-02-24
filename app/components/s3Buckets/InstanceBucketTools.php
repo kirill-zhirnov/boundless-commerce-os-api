@@ -1,6 +1,7 @@
 <?php
 
 namespace app\components\s3Buckets;
+
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use app\modules\manager\models\Instance;
@@ -13,8 +14,8 @@ class InstanceBucketTools
 		protected string $bucket,
 		protected Instance $instance,
 		protected string|null $folderPrefix = null
-	)
-	{}
+	) {
+	}
 
 	public function getS3Client(): S3Client
 	{

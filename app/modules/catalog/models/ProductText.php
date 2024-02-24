@@ -103,7 +103,7 @@ class ProductText extends \yii\db\ActiveRecord
 
 	public function getDescriptionAsText(): string
 	{
-		return trim(strip_tags($this->description));
+		return trim(strip_tags($this->description ?? ''));
 	}
 
 	public function getShortDescription($maxLength = 100): string
