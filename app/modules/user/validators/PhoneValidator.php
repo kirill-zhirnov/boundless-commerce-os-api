@@ -45,7 +45,7 @@ class PhoneValidator extends Validator
 	protected function validateValue($value)
 	{
 		$value = trim(strval($value));
-		if ($value === '') {
+		if ($value === '' || is_null($this->mask) || $this->mask === '') {
 			return null;
 		}
 
