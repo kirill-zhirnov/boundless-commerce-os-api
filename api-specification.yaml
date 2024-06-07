@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Boundless-commerce API
-  version: 1.1.28
+  version: 1.1.29
   contact:
     name: Support team
     email: info@boundless-commerce.com
@@ -1415,6 +1415,12 @@ paths:
 
                 delivery_id:
                   type: integer
+                  description: An of the shipping method. You can see all available options by calling `GET /orders/checkout/{order_id}/shipping-step`
+
+                delivery_rate:
+                  type: number
+                  minimum: 0
+                  description: If specified - overwrites price for shipping, otherwise the price is taken from DB.
 
                 custom_attrs:
                   type: object
@@ -1807,6 +1813,11 @@ paths:
                   type: boolean
                 delivery_id:
                   type: integer
+                  description: An of the shipping method. You can see all available options by calling `GET /orders/checkout/{order_id}/shipping-step`
+                delivery_rate:
+                  type: number
+                  minimum: 0
+                  description: If specified - overwrites price for shipping, otherwise the price is taken from DB.
                 custom_attrs:
                   type: object
                   description: Arbitrary data related to the Order. Should be an object.

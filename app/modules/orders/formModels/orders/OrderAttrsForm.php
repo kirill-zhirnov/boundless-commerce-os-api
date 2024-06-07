@@ -32,6 +32,7 @@ class OrderAttrsForm extends Model
 	public $billing_address;
 	public $billing_address_the_same;
 	public $delivery_id;
+	public $delivery_rate;
 	public $payment_method_id;
 	public $custom_attrs;
 	public $client_comment;
@@ -75,6 +76,9 @@ class OrderAttrsForm extends Model
 				'targetClass' => Delivery::class,
 				'targetAttribute' => ['delivery_id' => 'delivery_id']
 			],
+			['delivery_id', 'required', 'when' => fn () => $this->delivery_rate],
+			['delivery_rate', 'number', 'min' => 0],
+
 			['custom_attrs', ArbitraryDataValidator::class]
 		];
 	}
@@ -136,6 +140,11 @@ class OrderAttrsForm extends Model
 
 			$itemPrice = $orderService->findOrCreateItemPrice();
 			$price = (isset($delivery->shipping_config, $delivery->shipping_config['price'])) ? $delivery->shipping_config['price'] : 0;
+
+			if (isset($this->delivery_rate)) {
+				$price = $this->delivery_rate;
+			}
+
 			$itemPrice->saveSinglePrice($price);
 
 			//trigger a trigger to recalculate total_price.
